@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ayn Thor Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>Ayn Thor Manager</h1>
+        <div id="status-bar">
+            <span id="status-dot" class="dot disconnected"></span>
+            <span id="status-text">Desconectado</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- Connection Panel -->
+        <section id="connection-panel" class="panel">
+            <h2>Conexao ADB</h2>
+            <div class="connection-form">
+                <input type="text" id="ip-input" placeholder="IP do Thor (ex: 192.168.1.100 ou 192.168.1.100:38383)" />
+                <button id="btn-scan" class="btn btn-small" title="Buscar na rede">&#128269; Buscar</button>
+                <button id="btn-pair" class="btn btn-small" title="Parear novo dispositivo">&#128279; Parear</button>
+                <button id="btn-connect" class="btn btn-primary">Conectar</button>
+                <button id="btn-disconnect" class="btn btn-danger" disabled>Desconectar</button>
+            </div>
+            <div id="scan-results" class="scan-results" hidden></div>
+            <p id="connection-message" class="message"></p>
+        </section>
+
+        <!-- File Browser -->
+        <section id="file-browser" class="panel">
+            <h2>Gerenciador de Arquivos</h2>
+
+            <!-- Path bar -->
+            <div class="path-bar">
+                <button id="btn-up" class="btn btn-small" title="Voltar">&uarr;</button>
+                <input type="text" id="path-input" value="/sdcard/" readonly />
+                <button id="btn-refresh" class="btn btn-small" title="Atualizar">&#x21bb;</button>
+            </div>
+
+            <!-- Actions -->
+            <div class="actions-bar">
+                <button id="btn-new-folder" class="btn btn-small">+ Nova Pasta</button>
+                <label class="btn btn-small btn-upload" for="file-upload-input">Upload</label>
+                <input type="file" id="file-upload-input" multiple hidden />
+            </div>
+
+            <!-- File list -->
+            <div id="file-list" class="file-list">
+                <p class="placeholder">Conecte ao dispositivo para navegar os arquivos.</p>
+            </div>
+
+            <!-- Upload progress -->
+            <div id="upload-progress" class="upload-progress" hidden>
+                <div class="progress-info">
+                    <span id="upload-file-name">-</span>
+                    <span id="upload-percent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <div class="progress-details">
+                    <span id="upload-speed">-</span>
+                    <span id="upload-index">-</span>
+                </div>
+                <button id="btn-cancel-upload" class="btn btn-danger btn-small">Cancelar</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Context menu -->
+    <div id="context-menu" class="context-menu" hidden>
+        <button id="ctx-rename">Renomear</button>
+        <button id="ctx-delete">Excluir</button>
+    </div>
+
+    <!-- Modal (rename / new folder) -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <h3 id="modal-title">-</h3>
+            <input type="text" id="modal-input" />
+            <div class="modal-buttons">
+                <button id="modal-cancel" class="btn">Cancelar</button>
+                <button id="modal-confirm" class="btn btn-primary">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
