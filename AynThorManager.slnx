@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/AynThorManager.Api/AynThorManager.Api.csproj" />
     <Project Path="src/AynThorManager.Core/AynThorManager.Core.csproj" />
+    <Project Path="src/AynThorManager.Desktop/AynThorManager.Desktop.csproj" />
     <Project Path="src/AynThorManager.Infrastructure/AynThorManager.Infrastructure.csproj" />
     <Project Path="src/AynThorManager.Services/AynThorManager.Services.csproj" />
   </Folder>

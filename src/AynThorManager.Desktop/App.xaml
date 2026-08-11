@@ -1,0 +1,15 @@
+﻿<Application x:Class="AynThorManager.Desktop.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <SolidColorBrush x:Key="BgDark" Color="#1a1a2e"/>
+        <SolidColorBrush x:Key="BgPanel" Color="#16213e"/>
+        <SolidColorBrush x:Key="Border" Color="#0f3460"/>
+        <SolidColorBrush x:Key="Accent" Color="#00d4ff"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#e0e0e0"/>
+        <SolidColorBrush x:Key="TextSecondary" Color="#78909c"/>
+        <SolidColorBrush x:Key="Success" Color="#00e676"/>
+        <SolidColorBrush x:Key="Danger" Color="#ff5252"/>
+    </Application.Resources>
+</Application>

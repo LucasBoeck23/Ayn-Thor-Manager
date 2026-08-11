@@ -1,0 +1,105 @@
+﻿<Window x:Class="AynThorManager.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Ayn Thor Manager" Width="1100" Height="750"
+        Background="{StaticResource BgDark}" WindowStartupLocation="CenterScreen">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="350"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Panel: Connection + File Browser -->
+        <Border Grid.Column="0" Background="{StaticResource BgPanel}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <!-- Header -->
+                <Border DockPanel.Dock="Top" Padding="12" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                    <StackPanel>
+                        <TextBlock Text="Ayn Thor Manager" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Ellipse x:Name="StatusDot" Width="10" Height="10" Fill="{StaticResource Danger}" Margin="0,0,6,0"/>
+                            <TextBlock x:Name="StatusText" Text="Desconectado" Foreground="{StaticResource TextSecondary}" FontSize="12"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Connection -->
+                <Border DockPanel.Dock="Top" Padding="12" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                    <StackPanel>
+                        <TextBlock Text="Conexao" Foreground="{StaticResource TextSecondary}" FontSize="11" Margin="0,0,0,6"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="IpInput" Grid.Column="0" Padding="6" FontSize="12"
+                                     Background="#0e1a30" Foreground="{StaticResource TextPrimary}"
+                                     BorderBrush="{StaticResource Border}" Text=""/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0">
+                                <Button x:Name="BtnScan" Content="Buscar" Click="BtnScan_Click" Padding="8,6" Margin="0,0,4,0"
+                                        Background="{StaticResource Border}" Foreground="{StaticResource TextPrimary}" BorderThickness="0"/>
+                                <Button x:Name="BtnConnect" Content="Conectar" Click="BtnConnect_Click" Padding="8,6"
+                                        Background="{StaticResource Accent}" Foreground="Black" BorderThickness="0"/>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock x:Name="ConnMessage" Text="" FontSize="11" Margin="0,4,0,0" Foreground="{StaticResource TextSecondary}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- File Browser -->
+                <DockPanel Margin="0">
+                    <!-- Path bar -->
+                    <Border DockPanel.Dock="Top" Padding="8" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="^" Click="BtnUp_Click" Width="28" Padding="4"
+                                    Background="{StaticResource Border}" Foreground="{StaticResource TextPrimary}" BorderThickness="0"/>
+                            <TextBlock x:Name="PathDisplay" Grid.Column="1" Text="/storage/" VerticalAlignment="Center"
+                                       Margin="8,0" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Accent}"/>
+                            <Button Grid.Column="2" Content="+" Click="BtnNewFolder_Click" Width="28" Padding="4"
+                                    Background="{StaticResource Border}" Foreground="{StaticResource TextPrimary}" BorderThickness="0" ToolTip="Nova pasta"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- File list -->
+                    <ListBox x:Name="FileList" Background="Transparent" BorderThickness="0"
+                             Foreground="{StaticResource TextPrimary}" FontSize="12"
+                             MouseDoubleClick="FileList_DoubleClick">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="4,3">
+                                    <TextBlock Text="{Binding Icon}" Width="20"/>
+                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextPrimary}"/>
+                                    <TextBlock Text="{Binding Size}" Margin="8,0,0,0" Foreground="{StaticResource TextSecondary}" FontSize="10"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Right Panel: Scrcpy Embedded -->
+        <DockPanel Grid.Column="1">
+            <!-- Stream toolbar -->
+            <Border DockPanel.Dock="Top" Padding="12" Background="{StaticResource BgPanel}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="BtnStream" Content="Espelhar Tela" Click="BtnStream_Click" Padding="10,6"
+                            Background="{StaticResource Accent}" Foreground="Black" BorderThickness="0" Margin="0,0,8,0"/>
+                    <Button x:Name="BtnStopStream" Content="Parar" Click="BtnStopStream_Click" Padding="10,6"
+                            Background="{StaticResource Danger}" Foreground="White" BorderThickness="0" IsEnabled="False"/>
+                    <TextBlock x:Name="StreamStatus" Text="Inativo" VerticalAlignment="Center" Margin="12,0,0,0"
+                               Foreground="{StaticResource TextSecondary}" FontSize="12"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Scrcpy host area -->
+            <Border x:Name="ScrcpyPanel" Background="Black"/>
+        </DockPanel>
+    </Grid>
+</Window>
