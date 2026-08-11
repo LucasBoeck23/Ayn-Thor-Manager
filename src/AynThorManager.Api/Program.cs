@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Register application services
 builder.Services.AddAdbServices(builder.Configuration);
 builder.Services.AddFileStorageServices();
+builder.Services.AddStreamServices();
 
 // WebSocketHandler and TransferService have a circular dependency.
 // Register IWebSocketNotifier first, then TransferService.
@@ -30,6 +31,7 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapDeviceEndpoints();
 app.MapFileEndpoints();
+app.MapStreamEndpoints();
 app.MapWebSocketEndpoint();
 
 Console.WriteLine($"Ayn Thor Manager API starting on http://localhost:5000");

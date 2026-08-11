@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Thor - Espelhamento</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0e1a30; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; }
+        .toolbar {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 20px; background: #16213e; border-bottom: 1px solid #0f3460;
+        }
+        .toolbar h2 { color: #00d4ff; font-size: 1rem; flex: 1; }
+        .btn { padding: 8px 18px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.85rem; }
+        .btn-stop { background: #ff5252; color: #fff; }
+        .btn-back { background: #0f3460; color: #e0e0e0; }
+        .screen-area {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+        }
+        .screen-frame {
+            width: 420px; height: 740px;
+            border: 3px solid #0f3460;
+            border-radius: 12px;
+            background: #000;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 40px rgba(0, 212, 255, 0.1);
+        }
+        .screen-frame p { color: #546e7a; font-size: 0.85rem; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <h2>Thor &rarr; PC</h2>
+        <button class="btn btn-stop" id="btn-stop">Parar Espelhamento</button>
+        <button class="btn btn-back" id="btn-back">&larr; Voltar</button>
+    </div>
+    <div class="screen-area">
+        <div class="screen-frame" id="screen-frame">
+            <p>Scrcpy rodando por cima desta area.<br>Use Alt+Tab se precisar alternar.</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('btn-stop').addEventListener('click', async () => {
+            await fetch('/api/stream/stop', { method: 'POST' });
+            document.getElementById('screen-frame').innerHTML = '<p>Espelhamento encerrado.</p>';
+            document.getElementById('btn-stop').disabled = true;
+            document.getElementById('btn-stop').style.opacity = '0.4';
+        });
+        document.getElementById('btn-back').addEventListener('click', () => { window.location.href = '/'; });
+
+        // Poll status
+        setInterval(async () => {
+            const r = await fetch('/api/stream/status');
+            const d = await r.json();
+            if (!d.streaming) {
+                document.getElementById('screen-frame').innerHTML = '<p>Espelhamento encerrado.</p>';
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

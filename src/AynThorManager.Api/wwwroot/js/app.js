@@ -316,3 +316,46 @@ function connectWs() {
 // === Init ===
 refreshStatus();
 connectWs();
+
+// === Streaming ===
+const btnStreamStart = $('btn-stream-start');
+const btnStreamStop = $('btn-stream-stop');
+const streamStatus = $('stream-status');
+
+btnStreamStart.addEventListener('click', async () => {
+    btnStreamStart.disabled = true;
+    streamStatus.textContent = 'Iniciando...';
+    streamStatus.style.color = '#78909c';
+    const { ok, data } = await api('/api/stream/start', { method: 'POST' });
+    if (ok) {
+        btnStreamStop.disabled = false;
+        streamStatus.textContent = 'Ativo (janela aberta)';
+        streamStatus.style.color = '#00e676';
+        // Abre aba de controle
+        window.open('/stream.html', '_blank');
+    } else {
+        btnStreamStart.disabled = false;
+        streamStatus.textContent = data?.detail || 'Erro';
+        streamStatus.style.color = '#ff5252';
+    }
+});
+
+btnStreamStop.addEventListener('click', async () => {
+    const { ok } = await api('/api/stream/stop', { method: 'POST' });
+    if (ok) {
+        btnStreamStart.disabled = false;
+        btnStreamStop.disabled = true;
+        streamStatus.textContent = 'Inativo';
+        streamStatus.style.color = '#78909c';
+    }
+});
+
+// Check stream status on load
+api('/api/stream/status').then(({ data }) => {
+    if (data?.streaming) {
+        btnStreamStart.disabled = false;
+        btnStreamStop.disabled = false;
+        streamStatus.textContent = 'Ativo (janela aberta)';
+        streamStatus.style.color = '#00e676';
+    }
+});
