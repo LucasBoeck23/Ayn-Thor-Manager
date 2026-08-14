@@ -23,10 +23,18 @@ public partial class MainWindow : Window
 
     // Win32 API for positioning scrcpy window
     [DllImport("user32.dll")] static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+    static readonly IntPtr HWND_TOP = IntPtr.Zero;
+    const uint SWP_NOMOVE = 0x0002;
+    const uint SWP_NOSIZE = 0x0001;
+    const uint SWP_NOACTIVATE = 0x0010;
 
     public MainWindow()
     {
         InitializeComponent();
+        Closing += MainWindow_Closing;
 
         // Bootstrap services (simple DI without container)
         var options = Options.Create(new AdbOptions { AdbPath = "adb" });
@@ -34,6 +42,17 @@ public partial class MainWindow : Window
         _commandQueue = new CommandQueue(_executor, NullLogger<CommandQueue>.Instance);
         _connectionService = new AdbConnectionService(_commandQueue, NullLogger<AdbConnectionService>.Instance);
         _fileService = new FileStorageService(_commandQueue, _connectionService, NullLogger<FileStorageService>.Instance);
+    }
+
+    private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        // Kill scrcpy when app closes
+        if (_scrcpyProcess is { HasExited: false })
+        {
+            _scrcpyProcess.Kill(true);
+            _scrcpyProcess.Dispose();
+            _scrcpyProcess = null;
+        }
     }
 
     // === Connection ===
@@ -165,7 +184,9 @@ public partial class MainWindow : Window
         else MessageBox.Show(result.Error!.Message, "Erro");
     }
 
-    // === Streaming (Scrcpy Positioned Over Panel) ===
+    private System.Windows.Threading.DispatcherTimer? _repositionTimer;
+
+    // === Streaming (Scrcpy positioned over panel with correct aspect ratio) ===
     private async void BtnStream_Click(object sender, RoutedEventArgs e)
     {
         if (!_connectionService.IsConnected) { ConnMessage.Text = "Conecte primeiro"; return; }
@@ -174,13 +195,10 @@ public partial class MainWindow : Window
         if (serial is null) return;
         if (!serial.Contains(':')) serial += ":5555";
 
-        // Calculate position of right panel in screen coordinates
-        var panelPos = ScrcpyPanel.PointToScreen(new Point(0, 0));
-        var dpi = VisualTreeHelper.GetDpi(this);
-        var panelW = (int)(ScrcpyPanel.ActualWidth);
-        var panelH = (int)(ScrcpyPanel.ActualHeight);
+        // Calculate panel position and size with 16:9 aspect ratio fitting
+        var (x, y, w, h) = CalculateScrcpyRect();
 
-        var args = $"-s {serial} --keyboard=uhid --mouse=sdk --gamepad=uhid --video-codec=h264 --video-bit-rate=5M --max-fps=60 --max-size=1080 --no-audio --video-buffer=16 --no-clipboard-autosync --window-borderless --always-on-top --window-x={(int)panelPos.X} --window-y={(int)panelPos.Y} --window-width={panelW} --window-height={panelH}";
+        var args = $"-s {serial} --keyboard=uhid --mouse=sdk --gamepad=uhid --video-codec=h264 --video-bit-rate=5M --max-fps=60 --max-size=1080 --no-audio --video-buffer=16 --no-clipboard-autosync --window-borderless --window-x={x} --window-y={y} --window-width={w} --window-height={h}";
 
         try
         {
@@ -189,7 +207,7 @@ public partial class MainWindow : Window
                 FileName = "scrcpy",
                 Arguments = args,
                 UseShellExecute = false,
-                CreateNoWindow = false
+                CreateNoWindow = true
             });
 
             if (_scrcpyProcess is null) return;
@@ -199,9 +217,29 @@ public partial class MainWindow : Window
             StreamStatus.Text = "Ativo";
             StreamStatus.Foreground = (Brush)FindResource("Success");
 
-            // Track window move/resize to reposition scrcpy
-            LocationChanged += OnWindowMoved;
+            // Track resize/move to reposition scrcpy
             SizeChanged += OnWindowResized;
+            StateChanged += OnWindowStateChanged;
+            LocationChanged += OnWindowMoved;
+
+            // Continuous repositioning timer (catches edge cases like snap, DPI change)
+            _repositionTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(100)
+            };
+            _repositionTimer.Tick += (_, _) => RepositionScrcpy();
+            _repositionTimer.Start();
+
+            // Wait for window handle
+            await Task.Run(async () =>
+            {
+                for (var i = 0; i < 30; i++)
+                {
+                    await Task.Delay(100);
+                    _scrcpyProcess.Refresh();
+                    if (_scrcpyProcess.MainWindowHandle != IntPtr.Zero) break;
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -209,8 +247,40 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnWindowMoved(object? sender, EventArgs e) => RepositionScrcpy();
     private void OnWindowResized(object sender, SizeChangedEventArgs e) => RepositionScrcpy();
+    private void OnWindowStateChanged(object? sender, EventArgs e) =>
+        Dispatcher.InvokeAsync(RepositionScrcpy, System.Windows.Threading.DispatcherPriority.Render);
+    private void OnWindowMoved(object? sender, EventArgs e) => RepositionScrcpy();
+
+    private (int x, int y, int w, int h) CalculateScrcpyRect()
+    {
+        var panelPos = ScrcpyPanel.PointToScreen(new Point(0, 0));
+        var panelW = ScrcpyPanel.ActualWidth;
+        var panelH = ScrcpyPanel.ActualHeight;
+
+        // Thor is 1920x1080 (16:9) — fit inside panel keeping aspect ratio
+        const double aspectRatio = 16.0 / 9.0;
+        double fitW, fitH;
+
+        if (panelW / panelH > aspectRatio)
+        {
+            // Panel is wider — fit by height
+            fitH = panelH;
+            fitW = panelH * aspectRatio;
+        }
+        else
+        {
+            // Panel is taller — fit by width
+            fitW = panelW;
+            fitH = panelW / aspectRatio;
+        }
+
+        // Center within panel
+        var offsetX = (panelW - fitW) / 2;
+        var offsetY = (panelH - fitH) / 2;
+
+        return ((int)(panelPos.X + offsetX), (int)(panelPos.Y + offsetY), (int)fitW, (int)fitH);
+    }
 
     private void RepositionScrcpy()
     {
@@ -218,11 +288,17 @@ public partial class MainWindow : Window
         var hWnd = _scrcpyProcess.MainWindowHandle;
         if (hWnd == IntPtr.Zero) return;
 
-        var panelPos = ScrcpyPanel.PointToScreen(new Point(0, 0));
-        var panelW = (int)ScrcpyPanel.ActualWidth;
-        var panelH = (int)ScrcpyPanel.ActualHeight;
+        if (WindowState == WindowState.Minimized)
+        {
+            ShowWindow(hWnd, 0); // SW_HIDE
+            return;
+        }
 
-        MoveWindow(hWnd, (int)panelPos.X, (int)panelPos.Y, panelW, panelH, true);
+        ShowWindow(hWnd, 5); // SW_SHOW
+        var (x, y, w, h) = CalculateScrcpyRect();
+        MoveWindow(hWnd, x, y, w, h, true);
+        // Keep scrcpy at top of z-order (visible, not behind other windows)
+        SetWindowPos(hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
 
     private void BtnStopStream_Click(object sender, RoutedEventArgs e)
@@ -234,8 +310,11 @@ public partial class MainWindow : Window
             _scrcpyProcess = null;
         }
 
-        LocationChanged -= OnWindowMoved;
         SizeChanged -= OnWindowResized;
+        StateChanged -= OnWindowStateChanged;
+        LocationChanged -= OnWindowMoved;
+        _repositionTimer?.Stop();
+        _repositionTimer = null;
 
         BtnStream.IsEnabled = true;
         BtnStopStream.IsEnabled = false;

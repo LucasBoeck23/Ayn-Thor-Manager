@@ -1,0 +1,106 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "AynThorManager.Desktop/1.0.0": {
+        "dependencies": {
+          "AynThorManager.Core": "1.0.0",
+          "AynThorManager.Infrastructure": "1.0.0",
+          "AynThorManager.Services": "1.0.0",
+          "System.Reactive": "6.0.1"
+        },
+        "runtime": {
+          "AynThorManager.Desktop.dll": {}
+        }
+      },
+      "CliWrap/3.7.0": {
+        "runtime": {
+          "lib/net9.0/CliWrap.dll": {
+            "assemblyVersion": "3.7.0.0",
+            "fileVersion": "3.7.0.0"
+          }
+        }
+      },
+      "System.Reactive/6.0.1": {
+        "runtime": {
+          "lib/net6.0/System.Reactive.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.1.7420"
+          }
+        }
+      },
+      "AynThorManager.Core/1.0.0": {
+        "runtime": {
+          "AynThorManager.Core.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "AynThorManager.Infrastructure/1.0.0": {
+        "dependencies": {
+          "AynThorManager.Core": "1.0.0",
+          "CliWrap": "3.7.0"
+        },
+        "runtime": {
+          "AynThorManager.Infrastructure.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "AynThorManager.Services/1.0.0": {
+        "dependencies": {
+          "AynThorManager.Core": "1.0.0",
+          "System.Reactive": "6.0.1"
+        },
+        "runtime": {
+          "AynThorManager.Services.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "AynThorManager.Desktop/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "CliWrap/3.7.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-2RgU3zmQDAD4S8Aq4igWRF31VzzH/zE6kdecLfeozoPZlibahBs9AGSqrk8B6U13K2A65dFRLg/0tNBtBaOH/A==",
+      "path": "cliwrap/3.7.0",
+      "hashPath": "cliwrap.3.7.0.nupkg.sha512"
+    },
+    "System.Reactive/6.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-rHaWtKDwCi9qJ3ObKo8LHPMuuwv33YbmQi7TcUK1C264V3MFnOr5Im7QgCTdLniztP3GJyeiSg5x8NqYJFqRmg==",
+      "path": "system.reactive/6.0.1",
+      "hashPath": "system.reactive.6.0.1.nupkg.sha512"
+    },
+    "AynThorManager.Core/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AynThorManager.Infrastructure/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AynThorManager.Services/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
