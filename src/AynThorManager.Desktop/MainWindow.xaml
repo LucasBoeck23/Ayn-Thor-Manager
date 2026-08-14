@@ -43,18 +43,41 @@
                                         Background="{StaticResource Accent}" Foreground="Black" BorderThickness="0"/>
                             </StackPanel>
                         </Grid>
-                        <Button x:Name="BtnInstallApp" Content="⚡ Instalar no Thor (USB)" Click="BtnInstallApp_Click"
-                                Padding="8,5" Margin="0,8,0,0" HorizontalAlignment="Left"
-                                Background="#0f3460" Foreground="{StaticResource TextPrimary}" BorderThickness="0" FontSize="11"/>
-                        <Button x:Name="BtnInstallBt" Content="📡 Enviar via Bluetooth" Click="BtnInstallBt_Click"
-                                Padding="8,5" Margin="0,4,0,0" HorizontalAlignment="Left"
-                                Background="#0f3460" Foreground="{StaticResource TextPrimary}" BorderThickness="0" FontSize="11"/>
-                        <TextBlock x:Name="ConnMessage" Text="" FontSize="11" Margin="0,4,0,0" Foreground="{StaticResource TextSecondary}"/>
+                        <Button x:Name="BtnInstallCompanion" Content="📲 Instalar Ayn Thor Link" 
+                                Click="BtnInstallCompanion_Click" Visibility="Collapsed"
+                                Padding="8,6" Margin="0,8,0,0" HorizontalAlignment="Stretch"
+                                Background="{StaticResource Accent}" Foreground="Black" BorderThickness="0" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="ConnMessage" Text="" FontSize="11" Margin="0,4,0,0" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
                 <!-- File Browser -->
                 <DockPanel Margin="0">
+                    <!-- Network stats (visible when connected) -->
+                    <Border DockPanel.Dock="Top" x:Name="NetStatsPanel" Padding="8,6" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1" Visibility="Collapsed">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" FontSize="10" Foreground="{StaticResource TextSecondary}">
+                                <Run Text="Ping: "/><Run x:Name="TxtPing" Text="--" Foreground="{StaticResource Accent}"/><Run Text=" ms"/>
+                            </TextBlock>
+                            <TextBlock Grid.Row="0" Grid.Column="1" FontSize="10" Foreground="{StaticResource TextSecondary}">
+                                <Run Text="Banda: "/><Run x:Name="TxtBand" Text="--" Foreground="{StaticResource Accent}"/>
+                            </TextBlock>
+                            <TextBlock Grid.Row="1" Grid.Column="0" FontSize="10" Foreground="{StaticResource TextSecondary}" Margin="0,2,0,0">
+                                <Run Text="Wi-Fi: "/><Run x:Name="TxtFreq" Text="--" Foreground="{StaticResource Accent}"/>
+                            </TextBlock>
+                            <TextBlock Grid.Row="1" Grid.Column="1" FontSize="10" Foreground="{StaticResource TextSecondary}" Margin="0,2,0,0">
+                                <Run Text="Sinal: "/><Run x:Name="TxtSignal" Text="--" Foreground="{StaticResource Accent}"/>
+                            </TextBlock>
+                        </Grid>
+                    </Border>
                     <!-- Path bar -->
                     <Border DockPanel.Dock="Top" Padding="8" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
                         <Grid>
@@ -98,7 +121,7 @@
                     <Button x:Name="BtnStream" Content="Espelhar Tela" Click="BtnStream_Click" Padding="10,6"
                             Background="{StaticResource Accent}" Foreground="Black" BorderThickness="0" Margin="0,0,8,0"/>
                     <Button x:Name="BtnStopStream" Content="Parar" Click="BtnStopStream_Click" Padding="10,6"
-                            Background="{StaticResource Danger}" Foreground="White" BorderThickness="0" IsEnabled="False"/>
+                            Background="{StaticResource Danger}" Foreground="White" BorderThickness="0" Visibility="Collapsed"/>
                     <TextBlock x:Name="StreamStatus" Text="Inativo" VerticalAlignment="Center" Margin="12,0,0,0"
                                Foreground="{StaticResource TextSecondary}" FontSize="12"/>
                 </StackPanel>

@@ -23,36 +23,8 @@ public sealed class AdbCommandExecutor(
     /// <inheritdoc />
     public Task<CommandResult> ExecuteAsync(string arguments, TimeSpan timeout, CancellationToken ct)
     {
-        logger.LogDebug("Executing ADB command: {AdbPath} {Arguments} (timeout: {Timeout})", _adbPath, arguments, timeout);
+        logger.LogDebug("ADB: {Arguments} (timeout: {Timeout})", arguments, timeout);
         return ExecuteInternalAsync(arguments, timeout, ct);
-    }
-
-    /// <inheritdoc />
-    public Task<CommandResult> ExecuteShellAsync(string shellCommand, TimeSpan timeout, CancellationToken ct)
-    {
-        logger.LogDebug("Executing ADB shell command: {ShellCommand}", shellCommand);
-        return ExecuteInternalAsync($"shell {shellCommand}", timeout, ct);
-    }
-
-    /// <inheritdoc />
-    public async Task<CommandResult> PushAsync(
-        string localPath, string remotePath,
-        IProgress<long>? progress, TimeSpan timeout, CancellationToken ct)
-    {
-        logger.LogDebug("Pushing file: {LocalPath} -> {RemotePath} (timeout: {Timeout})", localPath, remotePath, timeout);
-
-        progress?.Report(0);
-
-        var result = await ExecuteInternalAsync($"push \"{localPath}\" \"{remotePath}\"", timeout, ct);
-
-        if (result.Success && progress is not null)
-        {
-            var fileInfo = new FileInfo(localPath);
-            if (fileInfo.Exists)
-                progress.Report(fileInfo.Length);
-        }
-
-        return result;
     }
 
     /// <summary>

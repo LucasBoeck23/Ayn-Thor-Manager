@@ -26,11 +26,17 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")] static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
     [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+    [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+    [DllImport("user32.dll")] static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
     static readonly IntPtr HWND_TOP = IntPtr.Zero;
+    static readonly IntPtr HWND_TOPMOST = new(-1);
     const uint SWP_NOMOVE = 0x0002;
     const uint SWP_NOSIZE = 0x0001;
     const uint SWP_NOACTIVATE = 0x0010;
+    const int GWL_EXSTYLE = -20;
+    const int WS_EX_APPWINDOW = 0x00040000;
+    const int WS_EX_TOOLWINDOW = 0x00000080;
 
     public MainWindow()
     {
@@ -103,7 +109,7 @@ public partial class MainWindow : Window
                 }
             }
 
-            ConnMessage.Text = "Nenhum device encontrado. Digite o IP:porta manualmente.";
+            ConnMessage.Text = "Nenhum device encontrado.\nAtive 'Depuracao sem fio' no Thor e tente novamente.";
         }
         catch (Exception ex) { ConnMessage.Text = $"Erro: {ex.Message}"; }
         finally { BtnScan.IsEnabled = true; }
@@ -113,6 +119,14 @@ public partial class MainWindow : Window
     {
         var ip = IpInput.Text.Trim();
         if (string.IsNullOrEmpty(ip)) { ConnMessage.Text = "Digite o IP"; return; }
+        
+        // Warn if user is trying to connect to companion port instead of ADB
+        if (ip.EndsWith(":7100"))
+        {
+            ConnMessage.Text = "Porta 7100 e do companion, nao do ADB.\nUse 'Buscar' para encontrar a porta correta.";
+            return;
+        }
+        
         await ConnectToDevice(ip);
     }
 
@@ -123,9 +137,27 @@ public partial class MainWindow : Window
 
         if (result.IsSuccess && result.Value!.Status == DeviceStatusType.Connected)
         {
+            // Verify device is actually responsive (not "offline")
+            var target = address.Contains(':') ? address : $"{address}:5555";
+            var verify = await _executor.ExecuteAsync($"-s {target} shell echo ok", TimeSpan.FromSeconds(3), default);
+            
+            if (!verify.Success || !verify.StandardOutput.Contains("ok"))
+            {
+                // Device connected but offline — disconnect and report
+                await _executor.ExecuteAsync($"disconnect {target}", TimeSpan.FromSeconds(3), default);
+                StatusDot.Fill = (Brush)FindResource("Danger");
+                StatusText.Text = "Desconectado";
+                ConnMessage.Text = "Device offline. Ative 'Depuracao sem fio' no Thor e tente novamente.";
+                BtnInstallCompanion.Visibility = Visibility.Collapsed;
+                return;
+            }
+
             StatusDot.Fill = (Brush)FindResource("Success");
             StatusText.Text = $"Conectado ({address})";
             ConnMessage.Text = "Conectado!";
+            
+            StartNetStats();
+            await InstallCompanionIfNeeded();
             await LoadDirectory();
         }
         else
@@ -134,88 +166,54 @@ public partial class MainWindow : Window
         }
     }
 
-    // === Install companion app via USB ===
-    private async void BtnInstallApp_Click(object sender, RoutedEventArgs e)
+    private async Task InstallCompanionIfNeeded()
     {
-        BtnInstallApp.IsEnabled = false;
-        ConnMessage.Text = "Conecte o Thor via cabo USB...";
+        var target = GetAdbTargetPrefix();
 
-        var devices = await _executor.ExecuteAsync("devices", TimeSpan.FromSeconds(5), default);
-        if (!devices.Success || !devices.StandardOutput.Contains("device"))
+        var check = await _executor.ExecuteAsync($"{target}shell pm list packages com.aynthor.link", TimeSpan.FromSeconds(5), default);
+        if (check.Success && check.StandardOutput.Contains("com.aynthor.link"))
         {
-            ConnMessage.Text = "Thor nao detectado via USB. Conecte o cabo e ative debug USB.";
-            BtnInstallApp.IsEnabled = true;
+            BtnInstallCompanion.Visibility = Visibility.Collapsed;
             return;
         }
 
-        var apkPath = FindApkPath();
-        if (apkPath is null)
-        {
-            ConnMessage.Text = "APK nao encontrado. Compile o projeto mobile/ayn-thor-link primeiro.";
-            BtnInstallApp.IsEnabled = true;
-            return;
-        }
-
-        ConnMessage.Text = "Instalando Ayn Thor Link...";
-        var install = await _executor.ExecuteAsync($"install -r \"{apkPath}\"", TimeSpan.FromSeconds(30), default);
-        if (!install.Success || !install.StandardOutput.Contains("Success"))
-        {
-            ConnMessage.Text = $"Falha na instalacao: {install.StandardError}";
-            BtnInstallApp.IsEnabled = true;
-            return;
-        }
-
-        ConnMessage.Text = "Concedendo permissoes...";
-        await _executor.ExecuteAsync("shell pm grant com.aynthor.link android.permission.WRITE_SECURE_SETTINGS", TimeSpan.FromSeconds(5), default);
-        await _executor.ExecuteAsync("shell am start -n com.aynthor.link/.MainActivity", TimeSpan.FromSeconds(5), default);
-        await _executor.ExecuteAsync("tcpip 5555", TimeSpan.FromSeconds(3), default);
-
-        ConnMessage.Text = "Instalado! Pode remover o cabo.";
-        BtnInstallApp.IsEnabled = true;
+        BtnInstallCompanion.Visibility = Visibility.Visible;
+        ConnMessage.Text = "Companion nao encontrado no Thor.";
     }
 
-    // === Send APK via Bluetooth ===
-    private void BtnInstallBt_Click(object sender, RoutedEventArgs e)
+    private bool _installing;
+    private async void BtnInstallCompanion_Click(object sender, RoutedEventArgs e)
     {
+        if (_installing) return;
+        _installing = true;
+
         var apkPath = FindApkPath();
         if (apkPath is null)
         {
-            ConnMessage.Text = "APK nao encontrado. Compile o projeto mobile/ayn-thor-link primeiro.";
+            ConnMessage.Text = "APK nao encontrado no PC.";
+            _installing = false;
             return;
         }
 
-        ConnMessage.Text = "Abrindo envio Bluetooth... Selecione o Thor na lista.";
+        BtnInstallCompanion.Content = "⏳ Instalando...";
+        var target = GetAdbTargetPrefix();
 
-        // fsquirt.exe is Windows' built-in Bluetooth file transfer tool
-        try
+        var install = await _executor.ExecuteAsync($"{target}install -r \"{Path.GetFullPath(apkPath)}\"", TimeSpan.FromSeconds(60), default);
+        if (install.Success && install.StandardOutput.Contains("Success"))
         {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "fsquirt.exe",
-                UseShellExecute = true
-            });
+            await _executor.ExecuteAsync($"{target}shell pm grant com.aynthor.link android.permission.WRITE_SECURE_SETTINGS", TimeSpan.FromSeconds(5), default);
+            await _executor.ExecuteAsync($"{target}shell am start -n com.aynthor.link/.MainActivity", TimeSpan.FromSeconds(5), default);
 
-            // Also try the direct send command
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "cmd.exe",
-                Arguments = $"/c start bluetooth:share?file=\"{apkPath}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            });
-
-            ConnMessage.Text = "Envie o arquivo pelo Bluetooth. No Thor, aceite e instale.";
+            BtnInstallCompanion.Visibility = Visibility.Collapsed;
+            ConnMessage.Text = "Ayn Thor Link instalado!\nPode desativar 'Depuracao sem fio' no Thor.";
         }
-        catch
+        else
         {
-            // Fallback: open file location so user can right-click → Send via Bluetooth
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "explorer.exe",
-                Arguments = $"/select,\"{apkPath}\""
-            });
-            ConnMessage.Text = "Clique direito no APK → Enviar para → Dispositivo Bluetooth";
+            ConnMessage.Text = $"Falha: {(install.StandardError + " " + install.StandardOutput).Trim()}";
+            BtnInstallCompanion.Content = "📲 Instalar Ayn Thor Link";
         }
+
+        _installing = false;
     }
 
     private static string? FindApkPath()
@@ -224,9 +222,9 @@ public partial class MainWindow : Window
         {
             Path.Combine(AppContext.BaseDirectory, "assets", "ayn-thor-link.apk"),
             Path.Combine(AppContext.BaseDirectory, "ayn-thor-link.apk"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "ayn-thor-link.apk"),
-            @"mobile\ayn-thor-link\app\build\outputs\apk\release\app-release.apk",
+            @"mobile\ayn-thor-link\release\ayn-thor-link.apk",
             @"mobile\ayn-thor-link\app\build\outputs\apk\debug\app-debug.apk",
+            @"mobile\ayn-thor-link\app\build\outputs\apk\release\app-release.apk",
         };
 
         return candidates.FirstOrDefault(File.Exists);
@@ -284,6 +282,7 @@ public partial class MainWindow : Window
     }
 
     private System.Windows.Threading.DispatcherTimer? _repositionTimer;
+    private System.Windows.Threading.DispatcherTimer? _netStatsTimer;
 
     // === Streaming (Scrcpy positioned over panel with correct aspect ratio) ===
     private async void BtnStream_Click(object sender, RoutedEventArgs e)
@@ -312,7 +311,8 @@ public partial class MainWindow : Window
             if (_scrcpyProcess is null) return;
 
             BtnStream.IsEnabled = false;
-            BtnStopStream.IsEnabled = true;
+            BtnStream.Visibility = Visibility.Collapsed;
+            BtnStopStream.Visibility = Visibility.Visible;
             StreamStatus.Text = "Ativo";
             StreamStatus.Foreground = (Brush)FindResource("Success");
 
@@ -324,7 +324,7 @@ public partial class MainWindow : Window
             // Continuous repositioning timer (catches edge cases like snap, DPI change)
             _repositionTimer = new System.Windows.Threading.DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(100)
+                Interval = TimeSpan.FromMilliseconds(250)
             };
             _repositionTimer.Tick += (_, _) => RepositionScrcpy();
             _repositionTimer.Start();
@@ -339,6 +339,18 @@ public partial class MainWindow : Window
                     if (_scrcpyProcess.MainWindowHandle != IntPtr.Zero) break;
                 }
             });
+
+            // Hide scrcpy from taskbar
+            if (_scrcpyProcess.MainWindowHandle != IntPtr.Zero)
+            {
+                var hWnd = _scrcpyProcess.MainWindowHandle;
+                var exStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
+                exStyle &= ~WS_EX_APPWINDOW;  // Remove from taskbar
+                exStyle |= WS_EX_TOOLWINDOW;  // Tool window (no taskbar icon)
+                ShowWindow(hWnd, 0); // Hide briefly to apply style
+                SetWindowLong(hWnd, GWL_EXSTYLE, exStyle);
+                ShowWindow(hWnd, 5); // Show again
+            }
         }
         catch (Exception ex)
         {
@@ -396,8 +408,8 @@ public partial class MainWindow : Window
         ShowWindow(hWnd, 5); // SW_SHOW
         var (x, y, w, h) = CalculateScrcpyRect();
         MoveWindow(hWnd, x, y, w, h, true);
-        // Keep scrcpy at top of z-order (visible, not behind other windows)
-        SetWindowPos(hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        // Keep scrcpy always on top and in front
+        SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
 
     private void BtnStopStream_Click(object sender, RoutedEventArgs e)
@@ -409,6 +421,7 @@ public partial class MainWindow : Window
             _scrcpyProcess = null;
         }
 
+        // Wake screen if it was turned off
         SizeChanged -= OnWindowResized;
         StateChanged -= OnWindowStateChanged;
         LocationChanged -= OnWindowMoved;
@@ -416,7 +429,8 @@ public partial class MainWindow : Window
         _repositionTimer = null;
 
         BtnStream.IsEnabled = true;
-        BtnStopStream.IsEnabled = false;
+        BtnStream.Visibility = Visibility.Visible;
+        BtnStopStream.Visibility = Visibility.Collapsed;
         StreamStatus.Text = "Inativo";
         StreamStatus.Foreground = (Brush)FindResource("TextSecondary");
     }
@@ -427,6 +441,94 @@ public partial class MainWindow : Window
         string[] units = ["B", "KB", "MB", "GB"];
         var i = (int)Math.Floor(Math.Log(bytes, 1024));
         return $"{bytes / Math.Pow(1024, i):F1} {units[i]}";
+    }
+
+    // === Network Stats ===
+    private void StartNetStats()
+    {
+        NetStatsPanel.Visibility = Visibility.Visible;
+        _netStatsTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(2)
+        };
+        _netStatsTimer.Tick += async (_, _) => await UpdateNetStats();
+        _netStatsTimer.Start();
+        _ = UpdateNetStats(); // first update immediately
+    }
+
+    private void StopNetStats()
+    {
+        _netStatsTimer?.Stop();
+        _netStatsTimer = null;
+        NetStatsPanel.Visibility = Visibility.Collapsed;
+    }
+
+    private int _pingHistory;
+    private int _pingCount;
+
+    private async Task UpdateNetStats()
+    {
+        if (!_connectionService.IsConnected) return;
+
+        var target = GetAdbTargetPrefix();
+
+        // Ping: measure round-trip to device via adb shell echo
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var ping = await _executor.ExecuteAsync($"{target}shell echo ok", TimeSpan.FromSeconds(2), default);
+        sw.Stop();
+
+        if (ping.Success)
+        {
+            var latency = (int)sw.ElapsedMilliseconds;
+            _pingHistory += latency;
+            _pingCount++;
+            var avg = _pingHistory / _pingCount;
+
+            TxtPing.Text = $"{latency}";
+            TxtPing.Foreground = (Brush)FindResource(latency < 50 ? "Success" : latency < 150 ? "Accent" : "Danger");
+
+            // Estimate usable bandwidth from latency (rough heuristic)
+            var bandEst = latency < 30 ? "Otima" : latency < 80 ? "Boa" : latency < 200 ? "Media" : "Ruim";
+            TxtBand.Text = bandEst;
+        }
+
+        // Wi-Fi frequency + signal (from device)
+        var wifi = await _executor.ExecuteAsync($"{target}shell dumpsys wifi | grep -m1 \"rssi=\"", TimeSpan.FromSeconds(2), default);
+        if (wifi.Success && !string.IsNullOrWhiteSpace(wifi.StandardOutput))
+        {
+            var lines = wifi.StandardOutput;
+            
+            // Parse frequency: f=2422 or f=5180
+            var freqMatch = System.Text.RegularExpressions.Regex.Match(lines, @"f=(\d+)");
+            if (freqMatch.Success)
+            {
+                var freq = int.Parse(freqMatch.Groups[1].Value);
+                TxtFreq.Text = freq > 5000 ? "5GHz" : "2.4GHz";
+                TxtFreq.Foreground = (Brush)FindResource(freq > 5000 ? "Success" : "Accent");
+            }
+
+            // Parse RSSI: rssi=-72
+            var rssiMatch = System.Text.RegularExpressions.Regex.Match(lines, @"rssi=(-?\d+)");
+            if (rssiMatch.Success)
+            {
+                var rssi = int.Parse(rssiMatch.Groups[1].Value);
+                var quality = rssi > -50 ? "Excelente" : rssi > -60 ? "Bom" : rssi > -70 ? "Ok" : "Fraco";
+                TxtSignal.Text = $"{quality} ({rssi}dBm)";
+                TxtSignal.Foreground = (Brush)FindResource(rssi > -60 ? "Success" : rssi > -70 ? "Accent" : "Danger");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets the ADB -s target prefix for the connected device.
+    /// Avoids "more than one device/emulator" errors.
+    /// </summary>
+    private string GetAdbTargetPrefix()
+    {
+        var serial = _connectionService.CurrentStatus.IpAddress;
+        if (serial is null) return "";
+        if (!serial.Contains(':')) serial += ":5555";
+        return $"-s {serial} ";
     }
 }
 

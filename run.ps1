@@ -1,29 +1,25 @@
 # Ayn Thor Manager - Build & Run
-# Uso: .\run.ps1 [desktop|web]
-param([string]$Mode = "desktop")
-
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
 
 Write-Host "Ayn Thor Manager" -ForegroundColor Cyan
 Write-Host ""
+Write-Host "Compilando..." -ForegroundColor Gray
 
-if ($Mode -eq "web") {
-    Write-Host "Compilando API web..." -ForegroundColor Gray
-    $out = "$root\publish"
-    Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue
-    dotnet publish "$root\src\AynThorManager.Api" -o $out --nologo -q
-    if ($LASTEXITCODE -ne 0) { Write-Host "Erro na compilacao!" -ForegroundColor Red; exit 1 }
-    Write-Host "Iniciando em http://localhost:5000" -ForegroundColor Green
-    Set-Location $out
-    & "$out\AynThorManager.Api.exe"
+$out = "$root\publish-desktop"
+Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue
+dotnet publish "$root\src\AynThorManager.Desktop" -o $out --nologo 2>&1 | ForEach-Object {
+    if ($_ -match "error" -and $_ -notmatch "Criando o diret") { Write-Host $_ -ForegroundColor Red }
 }
-else {
-    Write-Host "Compilando app desktop..." -ForegroundColor Gray
-    $out = "$root\publish-desktop"
-    Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue
-    dotnet publish "$root\src\AynThorManager.Desktop" -o $out --nologo -q
-    if ($LASTEXITCODE -ne 0) { Write-Host "Erro na compilacao!" -ForegroundColor Red; exit 1 }
-    Write-Host "Iniciando..." -ForegroundColor Green
-    & "$out\AynThorManager.Desktop.exe"
+
+if (!(Test-Path "$out\AynThorManager.Desktop.exe")) { Write-Host "Erro na compilacao!" -ForegroundColor Red; exit 1 }
+
+# Copy companion APK
+$apkSrc = "$root\mobile\ayn-thor-link\release\ayn-thor-link.apk"
+if (Test-Path $apkSrc) {
+    New-Item -ItemType Directory -Path "$out\assets" -Force | Out-Null
+    Copy-Item $apkSrc "$out\assets\ayn-thor-link.apk" -Force
 }
+
+Write-Host "Iniciando..." -ForegroundColor Green
+& "$out\AynThorManager.Desktop.exe"

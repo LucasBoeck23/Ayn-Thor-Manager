@@ -182,7 +182,7 @@ public sealed class FileStorageService(
         if (!commandResult.Success)
         {
             logger.LogWarning("Command failed with exit code {ExitCode}: {Stderr}", commandResult.ExitCode, commandResult.StandardError);
-            return Result<CommandResult>.Failure(new Error("TIMEOUT", "Falha na operação no dispositivo."));
+            return Result<CommandResult>.Failure(new Error("DEVICE_OPERATION_FAILED", "Falha na operação no dispositivo."));
         }
 
         return Result<CommandResult>.Success(commandResult);

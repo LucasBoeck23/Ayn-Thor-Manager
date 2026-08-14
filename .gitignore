@@ -68,6 +68,15 @@ TestResults/
 
 # Published output
 publish/
+publish-desktop/
+
+# Gradle (Android companion)
+mobile/**/build/
+mobile/**/.gradle/
+local.properties
+
+# APK binary (checked into repo for easy install)
+# Stored at: mobile/ayn-thor-link/release/ayn-thor-link.apk
 
 # Misc
 *.cache
