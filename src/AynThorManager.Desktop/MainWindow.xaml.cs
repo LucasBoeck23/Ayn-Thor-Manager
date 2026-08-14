@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
@@ -131,6 +132,68 @@ public partial class MainWindow : Window
         {
             ConnMessage.Text = result.Error?.Message ?? result.Value?.Message ?? "Falha ao conectar";
         }
+    }
+
+    // === Install companion app via USB ===
+    private async void BtnInstallApp_Click(object sender, RoutedEventArgs e)
+    {
+        BtnInstallApp.IsEnabled = false;
+        ConnMessage.Text = "Conecte o Thor via cabo USB...";
+
+        // Check if device is connected via USB
+        var devices = await _executor.ExecuteAsync("devices", TimeSpan.FromSeconds(5), default);
+        if (!devices.Success || !devices.StandardOutput.Contains("device"))
+        {
+            ConnMessage.Text = "Thor nao detectado via USB. Conecte o cabo e ative debug USB.";
+            BtnInstallApp.IsEnabled = true;
+            return;
+        }
+
+        // Look for the APK
+        var apkPath = FindApkPath();
+        if (apkPath is null)
+        {
+            ConnMessage.Text = "APK nao encontrado. Compile o projeto mobile/ayn-thor-link primeiro.";
+            BtnInstallApp.IsEnabled = true;
+            return;
+        }
+
+        // Install APK
+        ConnMessage.Text = "Instalando Ayn Thor Link...";
+        var install = await _executor.ExecuteAsync($"install -r \"{apkPath}\"", TimeSpan.FromSeconds(30), default);
+        if (!install.Success || !install.StandardOutput.Contains("Success"))
+        {
+            ConnMessage.Text = $"Falha na instalacao: {install.StandardError}";
+            BtnInstallApp.IsEnabled = true;
+            return;
+        }
+
+        // Grant permission
+        ConnMessage.Text = "Concedendo permissoes...";
+        await _executor.ExecuteAsync("shell pm grant com.aynthor.link android.permission.WRITE_SECURE_SETTINGS", TimeSpan.FromSeconds(5), default);
+
+        // Enable ADB wireless via the app
+        await _executor.ExecuteAsync("shell am start -n com.aynthor.link/.MainActivity", TimeSpan.FromSeconds(5), default);
+
+        // Switch to TCP mode on port 5555 as fallback
+        await _executor.ExecuteAsync("tcpip 5555", TimeSpan.FromSeconds(3), default);
+
+        ConnMessage.Text = "Instalado! Pode remover o cabo. O Thor vai conectar automaticamente.";
+        BtnInstallApp.IsEnabled = true;
+    }
+
+    private static string? FindApkPath()
+    {
+        var candidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "assets", "ayn-thor-link.apk"),
+            Path.Combine(AppContext.BaseDirectory, "ayn-thor-link.apk"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "ayn-thor-link.apk"),
+            @"mobile\ayn-thor-link\app\build\outputs\apk\release\app-release.apk",
+            @"mobile\ayn-thor-link\app\build\outputs\apk\debug\app-debug.apk",
+        };
+
+        return candidates.FirstOrDefault(File.Exists);
     }
 
     // === File Browser ===

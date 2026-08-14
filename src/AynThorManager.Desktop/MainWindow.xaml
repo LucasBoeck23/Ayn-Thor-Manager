@@ -43,6 +43,9 @@
                                         Background="{StaticResource Accent}" Foreground="Black" BorderThickness="0"/>
                             </StackPanel>
                         </Grid>
+                        <Button x:Name="BtnInstallApp" Content="⚡ Instalar app no Thor (USB)" Click="BtnInstallApp_Click"
+                                Padding="8,5" Margin="0,8,0,0" HorizontalAlignment="Left"
+                                Background="#0f3460" Foreground="{StaticResource TextPrimary}" BorderThickness="0" FontSize="11"/>
                         <TextBlock x:Name="ConnMessage" Text="" FontSize="11" Margin="0,4,0,0" Foreground="{StaticResource TextSecondary}"/>
                     </StackPanel>
                 </Border>
