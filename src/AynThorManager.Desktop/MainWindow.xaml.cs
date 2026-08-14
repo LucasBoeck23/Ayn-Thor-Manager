@@ -140,7 +140,6 @@ public partial class MainWindow : Window
         BtnInstallApp.IsEnabled = false;
         ConnMessage.Text = "Conecte o Thor via cabo USB...";
 
-        // Check if device is connected via USB
         var devices = await _executor.ExecuteAsync("devices", TimeSpan.FromSeconds(5), default);
         if (!devices.Success || !devices.StandardOutput.Contains("device"))
         {
@@ -149,7 +148,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Look for the APK
         var apkPath = FindApkPath();
         if (apkPath is null)
         {
@@ -158,7 +156,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Install APK
         ConnMessage.Text = "Instalando Ayn Thor Link...";
         var install = await _executor.ExecuteAsync($"install -r \"{apkPath}\"", TimeSpan.FromSeconds(30), default);
         if (!install.Success || !install.StandardOutput.Contains("Success"))
@@ -168,18 +165,57 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Grant permission
         ConnMessage.Text = "Concedendo permissoes...";
         await _executor.ExecuteAsync("shell pm grant com.aynthor.link android.permission.WRITE_SECURE_SETTINGS", TimeSpan.FromSeconds(5), default);
-
-        // Enable ADB wireless via the app
         await _executor.ExecuteAsync("shell am start -n com.aynthor.link/.MainActivity", TimeSpan.FromSeconds(5), default);
-
-        // Switch to TCP mode on port 5555 as fallback
         await _executor.ExecuteAsync("tcpip 5555", TimeSpan.FromSeconds(3), default);
 
-        ConnMessage.Text = "Instalado! Pode remover o cabo. O Thor vai conectar automaticamente.";
+        ConnMessage.Text = "Instalado! Pode remover o cabo.";
         BtnInstallApp.IsEnabled = true;
+    }
+
+    // === Send APK via Bluetooth ===
+    private void BtnInstallBt_Click(object sender, RoutedEventArgs e)
+    {
+        var apkPath = FindApkPath();
+        if (apkPath is null)
+        {
+            ConnMessage.Text = "APK nao encontrado. Compile o projeto mobile/ayn-thor-link primeiro.";
+            return;
+        }
+
+        ConnMessage.Text = "Abrindo envio Bluetooth... Selecione o Thor na lista.";
+
+        // fsquirt.exe is Windows' built-in Bluetooth file transfer tool
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "fsquirt.exe",
+                UseShellExecute = true
+            });
+
+            // Also try the direct send command
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c start bluetooth:share?file=\"{apkPath}\"",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+
+            ConnMessage.Text = "Envie o arquivo pelo Bluetooth. No Thor, aceite e instale.";
+        }
+        catch
+        {
+            // Fallback: open file location so user can right-click → Send via Bluetooth
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"/select,\"{apkPath}\""
+            });
+            ConnMessage.Text = "Clique direito no APK → Enviar para → Dispositivo Bluetooth";
+        }
     }
 
     private static string? FindApkPath()
