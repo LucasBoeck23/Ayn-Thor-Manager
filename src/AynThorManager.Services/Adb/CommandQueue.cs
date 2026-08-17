@@ -1,13 +1,9 @@
-using AynThorManager.Core.Interfaces;
+﻿using AynThorManager.Core.Interfaces;
 using AynThorManager.Core.Models;
 using Microsoft.Extensions.Logging;
 
 namespace AynThorManager.Services.Adb;
 
-/// <summary>
-/// Priority-based command queue with semaphore concurrency control.
-/// Normal: 2 concurrent | Bulk: 1 concurrent | Critical: no limit.
-/// </summary>
 public sealed class CommandQueue(
     IAdbCommandExecutor executor,
     ILogger<CommandQueue> logger) : ICommandQueue, IDisposable
@@ -32,7 +28,7 @@ public sealed class CommandQueue(
         try
         {
             var result = await executor.ExecuteAsync(command.Arguments, command.Timeout, ct);
-            logger.LogDebug("[{Priority}] {Description} → exit {ExitCode}", priority, command.Description, result.ExitCode);
+            logger.LogDebug("[{Priority}] {Description} â†’ exit {ExitCode}", priority, command.Description, result.ExitCode);
             return Result<CommandResult>.Success(result);
         }
         catch (OperationCanceledException)

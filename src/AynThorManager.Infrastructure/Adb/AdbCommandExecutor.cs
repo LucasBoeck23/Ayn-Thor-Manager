@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using CliWrap;
 using CliWrap.Buffered;
 using CliWrap.Exceptions;
@@ -10,27 +10,18 @@ using CommandResult = AynThorManager.Core.Models.CommandResult;
 
 namespace AynThorManager.Infrastructure.Adb;
 
-/// <summary>
-/// Low-level ADB command executor using CliWrap.
-/// Wraps all ADB CLI interactions with timeout, cancellation, and structured result handling.
-/// </summary>
 public sealed class AdbCommandExecutor(
     IOptions<AdbOptions> options,
     ILogger<AdbCommandExecutor> logger) : IAdbCommandExecutor
 {
     private readonly string _adbPath = options.Value.AdbPath;
 
-    /// <inheritdoc />
     public Task<CommandResult> ExecuteAsync(string arguments, TimeSpan timeout, CancellationToken ct)
     {
         logger.LogDebug("ADB: {Arguments} (timeout: {Timeout})", arguments, timeout);
         return ExecuteInternalAsync(arguments, timeout, ct);
     }
 
-    /// <summary>
-    /// Core execution method that handles timeout, cancellation, and error mapping.
-    /// Single source of truth for all CliWrap interactions — eliminates duplication.
-    /// </summary>
     private async Task<CommandResult> ExecuteInternalAsync(string arguments, TimeSpan timeout, CancellationToken ct)
     {
         var stopwatch = Stopwatch.StartNew();

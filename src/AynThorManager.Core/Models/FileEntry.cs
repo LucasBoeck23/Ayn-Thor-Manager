@@ -1,4 +1,4 @@
-namespace AynThorManager.Core.Models;
+﻿namespace AynThorManager.Core.Models;
 
 public sealed record FileEntry(
     string Name,

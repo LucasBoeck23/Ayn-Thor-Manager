@@ -1,21 +1,14 @@
-using System.Text;
+﻿using System.Text;
 using AynThorManager.Core.Models;
 
 namespace AynThorManager.Core.Validators;
 
-/// <summary>
-/// Validates file and directory names against filesystem naming rules.
-/// </summary>
 public static class FileNameValidator
 {
     private static readonly char[] InvalidChars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
     private static readonly HashSet<string> ReservedNames = [".", ".."];
     private const int MaxUtf8Bytes = 255;
 
-    /// <summary>
-    /// Validates a file or directory name.
-    /// Returns a successful Result if the name is valid, or an Error if invalid.
-    /// </summary>
     public static Result Validate(string? name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -79,11 +72,9 @@ public static class FileNameValidator
 
     private static bool IsInvalidCharacter(char ch)
     {
-        // Control characters U+0000–U+001F
         if (ch <= '\u001F')
             return true;
 
-        // Invalid filesystem characters
         return Array.IndexOf(InvalidChars, ch) >= 0;
     }
 

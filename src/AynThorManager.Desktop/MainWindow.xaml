@@ -14,46 +14,41 @@
         <Border Grid.Column="0" Background="{StaticResource BgPanel}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0">
             <DockPanel>
                 <!-- Header -->
-                <Border DockPanel.Dock="Top" Padding="12" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                <Border DockPanel.Dock="Top" Style="{StaticResource PanelSection}">
                     <StackPanel>
-                        <TextBlock Text="Ayn Thor Manager" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
+                        <TextBlock Text="Ayn Thor Manager" Style="{StaticResource TextTitle}"/>
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                             <Ellipse x:Name="StatusDot" Width="10" Height="10" Fill="{StaticResource Danger}" Margin="0,0,6,0"/>
-                            <TextBlock x:Name="StatusText" Text="Desconectado" Foreground="{StaticResource TextSecondary}" FontSize="12"/>
+                            <TextBlock x:Name="StatusText" Text="Desconectado" Style="{StaticResource TextCaption}"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <!-- Connection -->
-                <Border DockPanel.Dock="Top" Padding="12" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                <Border DockPanel.Dock="Top" Style="{StaticResource PanelSection}">
                     <StackPanel>
-                        <TextBlock Text="Conexao" Foreground="{StaticResource TextSecondary}" FontSize="11" Margin="0,0,0,6"/>
+                        <TextBlock Text="Conexao" Style="{StaticResource TextCaption}" Margin="0,0,0,6"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox x:Name="IpInput" Grid.Column="0" Padding="6" FontSize="12"
-                                     Background="#0e1a30" Foreground="{StaticResource TextPrimary}"
-                                     BorderBrush="{StaticResource Border}" Text=""/>
+                            <TextBox x:Name="IpInput" Grid.Column="0" Style="{StaticResource InputText}"/>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0">
-                                <Button x:Name="BtnScan" Content="Buscar" Click="BtnScan_Click" Padding="8,6" Margin="0,0,4,0"
-                                        Background="{StaticResource Border}" Foreground="{StaticResource TextPrimary}" BorderThickness="0"/>
-                                <Button x:Name="BtnConnect" Content="Conectar" Click="BtnConnect_Click" Padding="8,6"
-                                        Background="{StaticResource Accent}" Foreground="Black" BorderThickness="0"/>
+                                <Button x:Name="BtnScan" Content="Buscar" Click="BtnScan_Click" Style="{StaticResource BtnDefault}" Margin="0,0,4,0"/>
+                                <Button x:Name="BtnConnect" Content="Conectar" Click="BtnConnect_Click" Style="{StaticResource BtnPrimary}"/>
                             </StackPanel>
                         </Grid>
-                        <Button x:Name="BtnInstallCompanion" Content="📲 Instalar Ayn Thor Link" 
+                        <Button x:Name="BtnInstallCompanion" Content="📲 Instalar Ayn Thor Link"
                                 Click="BtnInstallCompanion_Click" Visibility="Collapsed"
-                                Padding="8,6" Margin="0,8,0,0" HorizontalAlignment="Stretch"
-                                Background="{StaticResource Accent}" Foreground="Black" BorderThickness="0" FontSize="12" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="ConnMessage" Text="" FontSize="11" Margin="0,4,0,0" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+                                Style="{StaticResource BtnPrimary}" Margin="0,8,0,0" HorizontalAlignment="Stretch"/>
+                        <TextBlock x:Name="ConnMessage" Style="{StaticResource TextCaption}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
                 <!-- File Browser -->
                 <DockPanel Margin="0">
-                    <!-- Network stats (visible when connected) -->
+                    <!-- Network stats -->
                     <Border DockPanel.Dock="Top" x:Name="NetStatsPanel" Padding="8,6" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1" Visibility="Collapsed">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -78,6 +73,7 @@
                             </TextBlock>
                         </Grid>
                     </Border>
+
                     <!-- Path bar -->
                     <Border DockPanel.Dock="Top" Padding="8" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
                         <Grid>
@@ -86,12 +82,10 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Content="^" Click="BtnUp_Click" Width="28" Padding="4"
-                                    Background="{StaticResource Border}" Foreground="{StaticResource TextPrimary}" BorderThickness="0"/>
+                            <Button Grid.Column="0" Content="^" Click="BtnUp_Click" Width="28" Style="{StaticResource BtnDefault}" Padding="4"/>
                             <TextBlock x:Name="PathDisplay" Grid.Column="1" Text="/storage/" VerticalAlignment="Center"
                                        Margin="8,0" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Accent}"/>
-                            <Button Grid.Column="2" Content="+" Click="BtnNewFolder_Click" Width="28" Padding="4"
-                                    Background="{StaticResource Border}" Foreground="{StaticResource TextPrimary}" BorderThickness="0" ToolTip="Nova pasta"/>
+                            <Button Grid.Column="2" Content="+" Click="BtnNewFolder_Click" Width="28" Style="{StaticResource BtnDefault}" Padding="4" ToolTip="Nova pasta"/>
                         </Grid>
                     </Border>
 
@@ -118,12 +112,9 @@
             <!-- Stream toolbar -->
             <Border DockPanel.Dock="Top" Padding="12" Background="{StaticResource BgPanel}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
                 <StackPanel Orientation="Horizontal">
-                    <Button x:Name="BtnStream" Content="Espelhar Tela" Click="BtnStream_Click" Padding="10,6"
-                            Background="{StaticResource Accent}" Foreground="Black" BorderThickness="0" Margin="0,0,8,0"/>
-                    <Button x:Name="BtnStopStream" Content="Parar" Click="BtnStopStream_Click" Padding="10,6"
-                            Background="{StaticResource Danger}" Foreground="White" BorderThickness="0" Visibility="Collapsed"/>
-                    <TextBlock x:Name="StreamStatus" Text="Inativo" VerticalAlignment="Center" Margin="12,0,0,0"
-                               Foreground="{StaticResource TextSecondary}" FontSize="12"/>
+                    <Button x:Name="BtnStream" Content="Espelhar Tela" Click="BtnStream_Click" Style="{StaticResource BtnPrimary}" Margin="0,0,8,0"/>
+                    <Button x:Name="BtnStopStream" Content="Parar" Click="BtnStopStream_Click" Style="{StaticResource BtnDanger}" Visibility="Collapsed"/>
+                    <TextBlock x:Name="StreamStatus" Text="Inativo" VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource TextCaption}"/>
                 </StackPanel>
             </Border>
 

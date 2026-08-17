@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using AynThorManager.Core.Helpers;
 using AynThorManager.Core.Interfaces;
 using AynThorManager.Core.Models;
@@ -8,10 +8,6 @@ using Microsoft.Extensions.Logging;
 
 namespace AynThorManager.Services.FileStorage;
 
-/// <summary>
-/// Implements CRUD operations on files and directories in the device storage via ADB commands.
-/// Uses AdbErrorParser for common error handling and PathHelper for path manipulation.
-/// </summary>
 public sealed class FileStorageService(
     ICommandQueue commandQueue,
     IAdbConnectionManager connectionManager,
@@ -24,7 +20,6 @@ public sealed class FileStorageService(
 
     private const int MaxEntries = 1000;
 
-    /// <inheritdoc />
     public async Task<Result<ListDirectoryResponse>> ListDirectoryAsync(string path, CancellationToken ct)
     {
         var preCheck = ValidatePathAndConnection(path);
@@ -39,16 +34,13 @@ public sealed class FileStorageService(
 
         var commandResult = result.Value!;
 
-        // Parse ls -la output into FileEntry list
         var entries = ParseLsOutput(commandResult.StandardOutput);
 
-        // Sort: directories first, then files, alphabetical case-insensitive
         var sorted = entries
             .OrderBy(e => e.Type == FileEntryType.Directory ? 0 : 1)
             .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        // Truncate to MaxEntries
         var totalCount = sorted.Count;
         var isTruncated = totalCount > MaxEntries;
         var truncated = isTruncated ? sorted.Take(MaxEntries).ToList() : sorted;
@@ -57,20 +49,16 @@ public sealed class FileStorageService(
         return Result<ListDirectoryResponse>.Success(new ListDirectoryResponse(truncated, path, isTruncated, totalCount));
     }
 
-    /// <inheritdoc />
     public async Task<Result<CreateDirectoryResponse>> CreateDirectoryAsync(string parentPath, string name, CancellationToken ct)
     {
-        // Validate name
         var nameValidation = FileNameValidator.Validate(name);
         if (!nameValidation.IsSuccess)
             return Result<CreateDirectoryResponse>.Failure(nameValidation.Error!);
 
-        // Validate path + connection
         var preCheck = ValidatePathAndConnection(parentPath);
         if (preCheck is not null)
             return Result<CreateDirectoryResponse>.Failure(preCheck);
 
-        // Validate full path length
         var fullPathValidation = PathValidator.ValidateFullPathLength(parentPath, name);
         if (!fullPathValidation.IsSuccess)
             return Result<CreateDirectoryResponse>.Failure(fullPathValidation.Error!);
@@ -86,15 +74,12 @@ public sealed class FileStorageService(
         return Result<CreateDirectoryResponse>.Success(new CreateDirectoryResponse(fullPath));
     }
 
-    /// <inheritdoc />
     public async Task<Result<RenameResponse>> RenameAsync(string currentPath, string newName, CancellationToken ct)
     {
-        // Validate new name
         var nameValidation = FileNameValidator.Validate(newName);
         if (!nameValidation.IsSuccess)
             return Result<RenameResponse>.Failure(nameValidation.Error!);
 
-        // Validate path + connection
         var preCheck = ValidatePathAndConnection(currentPath);
         if (preCheck is not null)
             return Result<RenameResponse>.Failure(preCheck);
@@ -112,7 +97,6 @@ public sealed class FileStorageService(
         return Result<RenameResponse>.Success(new RenameResponse(newFullPath));
     }
 
-    /// <inheritdoc />
     public async Task<Result<DeleteResponse>> DeleteAsync(string path, CancellationToken ct)
     {
         var preCheck = ValidatePathAndConnection(path);
@@ -129,12 +113,6 @@ public sealed class FileStorageService(
         return Result<DeleteResponse>.Success(new DeleteResponse(path));
     }
 
-    // ─── Private Helpers ─────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Validates path safety and device connection. Returns an Error if invalid, null if OK.
-    /// Consolidates the two pre-checks that every operation must perform.
-    /// </summary>
     private Error? ValidatePathAndConnection(string path)
     {
         var pathValidation = PathValidator.Validate(path);
@@ -147,30 +125,24 @@ public sealed class FileStorageService(
         if (!connectionManager.IsConnected)
         {
             logger.LogWarning("Operation rejected: device not connected");
-            return new Error("DEVICE_NOT_CONNECTED", "O dispositivo não está conectado via ADB.");
+            return new Error("DEVICE_NOT_CONNECTED", "O dispositivo nÃ£o estÃ¡ conectado via ADB.");
         }
 
         return null;
     }
 
-    /// <summary>
-    /// Executes an ADB command and parses common errors from output.
-    /// Consolidates the execute → check success → parse error output pattern.
-    /// </summary>
     private async Task<Result<CommandResult>> ExecuteAndParseAsync(AdbCommand command, string contextPath, CancellationToken ct)
     {
         var result = await commandQueue.EnqueueAsync(command, CommandPriority.Normal, ct);
 
-        // Command queue failure (timeout, cancellation)
         if (!result.IsSuccess)
         {
-            logger.LogWarning("Command failed: {Description} — {Error}", command.Description, result.Error!.Code);
-            return Result<CommandResult>.Failure(new Error("TIMEOUT", "O dispositivo não respondeu dentro do tempo limite."));
+            logger.LogWarning("Command failed: {Description} â€” {Error}", command.Description, result.Error!.Code);
+            return Result<CommandResult>.Failure(new Error("TIMEOUT", "O dispositivo nÃ£o respondeu dentro do tempo limite."));
         }
 
         var commandResult = result.Value!;
 
-        // Check for known ADB error patterns
         var parsedError = AdbErrorParser.TryParseError(commandResult.StandardOutput, commandResult.StandardError, contextPath);
         if (parsedError is not null)
         {
@@ -178,19 +150,15 @@ public sealed class FileStorageService(
             return Result<CommandResult>.Failure(parsedError);
         }
 
-        // Non-zero exit code without recognized pattern
         if (!commandResult.Success)
         {
             logger.LogWarning("Command failed with exit code {ExitCode}: {Stderr}", commandResult.ExitCode, commandResult.StandardError);
-            return Result<CommandResult>.Failure(new Error("DEVICE_OPERATION_FAILED", "Falha na operação no dispositivo."));
+            return Result<CommandResult>.Failure(new Error("DEVICE_OPERATION_FAILED", "Falha na operaÃ§Ã£o no dispositivo."));
         }
 
         return Result<CommandResult>.Success(commandResult);
     }
 
-    /// <summary>
-    /// Parses the output of 'ls -la' into a list of FileEntry objects.
-    /// </summary>
     private static List<FileEntry> ParseLsOutput(string output)
     {
         var entries = new List<FileEntry>();
@@ -206,10 +174,6 @@ public sealed class FileStorageService(
         return entries;
     }
 
-    /// <summary>
-    /// Attempts to parse a single ls -la output line into a FileEntry.
-    /// Returns null for non-parseable lines (total, headers, special entries).
-    /// </summary>
     private static FileEntry? TryParseLsLine(string line)
     {
         var trimmed = line.Trim();
@@ -230,7 +194,6 @@ public sealed class FileStorageService(
         if (name is "." or "..")
             return null;
 
-        // For symlinks, strip " -> target"
         if (typeChar == 'l')
         {
             var arrowIndex = name.IndexOf(" -> ", StringComparison.Ordinal);

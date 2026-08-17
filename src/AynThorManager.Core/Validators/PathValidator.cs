@@ -1,4 +1,4 @@
-using AynThorManager.Core.Helpers;
+﻿using AynThorManager.Core.Helpers;
 using AynThorManager.Core.Models;
 
 namespace AynThorManager.Core.Validators;
@@ -14,10 +14,6 @@ public static class PathValidator
         "/storage/"  // microSD: /storage/{uuid}/
     ];
 
-    /// <summary>
-    /// Validates that a path is safe: no traversal sequences, starts with an allowed prefix,
-    /// and does not exceed the maximum length.
-    /// </summary>
     public static Result Validate(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -35,10 +31,6 @@ public static class PathValidator
         return Result.Success();
     }
 
-    /// <summary>
-    /// Validates that the combined full path (parentPath + separator + name) does not exceed
-    /// the maximum path length of 4096 characters.
-    /// </summary>
     public static Result ValidateFullPathLength(string parentPath, string name)
     {
         var fullPath = PathHelper.Combine(parentPath, name);

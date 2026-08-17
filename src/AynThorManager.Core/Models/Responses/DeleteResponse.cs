@@ -1,3 +1,3 @@
-namespace AynThorManager.Core.Models.Responses;
+﻿namespace AynThorManager.Core.Models.Responses;
 
 public sealed record DeleteResponse(string DeletedPath);

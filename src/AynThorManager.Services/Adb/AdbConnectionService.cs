@@ -1,13 +1,10 @@
-using AynThorManager.Core.Interfaces;
+﻿using AynThorManager.Core.Interfaces;
 using AynThorManager.Core.Models;
 using AynThorManager.Core.Validators;
 using Microsoft.Extensions.Logging;
 
 namespace AynThorManager.Services.Adb;
 
-/// <summary>
-/// Manages the ADB connection lifecycle: connect, disconnect, and status tracking.
-/// </summary>
 public sealed class AdbConnectionService(
     ICommandQueue commandQueue,
     ILogger<AdbConnectionService> logger) : IAdbConnectionManager
@@ -18,13 +15,10 @@ public sealed class AdbConnectionService(
     private readonly object _lock = new();
     private DeviceStatus _currentStatus = new(DeviceStatusType.Disconnected, null, null, DateTimeOffset.UtcNow);
 
-    /// <inheritdoc />
     public DeviceStatus CurrentStatus { get { lock (_lock) { return _currentStatus; } } }
 
-    /// <inheritdoc />
     public bool IsConnected => CurrentStatus.Status == DeviceStatusType.Connected;
 
-    /// <inheritdoc />
     public async Task<Result<DeviceStatus>> ConnectAsync(string ipAddress, CancellationToken ct)
     {
         var validationResult = IpAddressValidator.Validate(ipAddress);
@@ -34,7 +28,7 @@ public sealed class AdbConnectionService(
         if (IsConnected)
             return Result<DeviceStatus>.Failure(new Error(
                 "CONNECTION_ALREADY_ACTIVE",
-                "Já existe uma conexão ADB ativa. Desconecte antes de conectar a outro dispositivo."));
+                "JÃ¡ existe uma conexÃ£o ADB ativa. Desconecte antes de conectar a outro dispositivo."));
 
         var target = ipAddress.Contains(':') ? ipAddress : $"{ipAddress}:5555";
         var command = new AdbCommand($"connect {target}", ConnectTimeout, "connect");
@@ -52,7 +46,7 @@ public sealed class AdbConnectionService(
 
         if (output.Contains("unauthorized"))
         {
-            UpdateStatus(DeviceStatusType.Unauthorized, ipAddress, "Dispositivo não autorizado.");
+            UpdateStatus(DeviceStatusType.Unauthorized, ipAddress, "Dispositivo nÃ£o autorizado.");
             return Result<DeviceStatus>.Success(CurrentStatus);
         }
 
@@ -67,7 +61,6 @@ public sealed class AdbConnectionService(
         return Result<DeviceStatus>.Failure(new Error("CONNECTION_TIMEOUT", "Timeout ao conectar."));
     }
 
-    /// <inheritdoc />
     public async Task<Result<DeviceStatus>> DisconnectAsync(CancellationToken ct)
     {
         var command = new AdbCommand("disconnect", DisconnectTimeout, "disconnect");
