@@ -26,21 +26,11 @@
                 <Border DockPanel.Dock="Top" Padding="12" BorderBrush="#0f3460" BorderThickness="0,0,0,1">
                     <StackPanel>
                         <TextBlock Text="Conexao" FontSize="11" Foreground="#78909c" Margin="0,0,0,6" />
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBox x:Name="IpInput" Grid.Column="0" Classes="input" />
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0">
-                                <Button x:Name="BtnScan" Content="Buscar" Click="BtnScan_Click" Classes="btn default" Margin="0,0,4,0" />
-                                <Button x:Name="BtnConnect" Content="Conectar" Click="BtnConnect_Click" Classes="btn primary" />
-                            </StackPanel>
-                        </Grid>
-                        <Button x:Name="BtnInstallCompanion" Content="📲 Instalar Ayn Thor Link"
-                                Click="BtnInstallCompanion_Click" IsVisible="False"
-                                Classes="btn primary" Margin="0,8,0,0" HorizontalAlignment="Stretch" />
 
                         <!-- Conexao direta: PC vira hotspot, Thor conecta nele (rede dedicada) -->
-                        <Button x:Name="BtnDirectConnect" Content="📡 Conexão Direta (Hotspot)"
+                        <Button x:Name="BtnDirectConnect" Content="📡 Conectar (Hotspot)"
                                 Click="BtnDirectConnect_Click"
-                                Classes="btn default" Margin="0,8,0,0" HorizontalAlignment="Stretch" />
+                                Classes="btn primary" HorizontalAlignment="Stretch" />
                         <Button x:Name="BtnDirectRetry" Content="🔄 Tentar de novo (reescanear portas)"
                                 Click="BtnDirectRetry_Click" IsVisible="False"
                                 Classes="btn primary" Margin="0,6,0,0" HorizontalAlignment="Stretch" />

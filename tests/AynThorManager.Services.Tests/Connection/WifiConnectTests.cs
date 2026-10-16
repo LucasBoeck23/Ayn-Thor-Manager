@@ -154,21 +154,6 @@ public class WifiConnectTests
         Assert.Equal(2, _adb.CountOf("devices -l"));
     }
 
-    [Fact]
-    public async Task Switching_from_usb_to_wifi_changes_the_current_device()
-    {
-        _adb.On("devices -l", DevicesUsbAndWifi)
-            .On($"connect {WifiSerial}", AlreadyConnected(WifiSerial));
-
-        await _connection.AutoConnectAsync(default);
-        Assert.Equal(DeviceTransport.Usb, _connection.Current!.Transport);
-
-        await _connection.ConnectAsync(WifiSerial, default);
-
-        Assert.Equal(DeviceTransport.Wifi, _connection.Current!.Transport);
-        Assert.Equal([UsbSerial, WifiSerial], _events.Select(e => e!.Serial));
-    }
-
     // ---- failures ----
 
     [Fact]
@@ -271,15 +256,18 @@ public class WifiConnectTests
     [Fact]
     public async Task Failed_attempt_keeps_the_device_already_in_use()
     {
-        _adb.On("devices -l", DevicesUsbAndWifi)
+        // Establish a working connection first, then a failed connect to another
+        // endpoint must keep the device already in use.
+        _adb.On($"connect {WifiSerial}", ConnectedTo(WifiSerial))
+            .On("devices -l", Devices(WifiLine(WifiSerial)))
             .On("connect 192.168.1.250:5555", NoRouteToHost("192.168.1.250:5555"));
-        await _connection.AutoConnectAsync(default);
+        Assert.True((await _connection.ConnectAsync(WifiSerial, default)).IsSuccess);
         _events.Clear();
 
         var result = await _connection.ConnectAsync("192.168.1.250:5555", default);
 
         Assert.False(result.IsSuccess);
-        Assert.Equal(UsbSerial, _connection.Current!.Serial);
+        Assert.Equal(WifiSerial, _connection.Current!.Serial);
         Assert.Empty(_events);
     }
 }

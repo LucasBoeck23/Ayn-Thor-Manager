@@ -94,19 +94,9 @@ public partial class MainWindow
         {
             var ip = _directIp;
 
-            // With the official adb (mDNS enabled) the Thor announces its wireless
-            // debugging port, so AutoConnect finds it directly. If mDNS yields
-            // nothing, fall back to scanning the port range on the discovered IP.
-            ShowDirect($"Thor em {ip}. Descobrindo porta do ADB (mDNS)...");
-            var auto = await _device.AutoConnectAsync(default);
-            if (auto.IsSuccess)
-            {
-                await ShowConnectResult(auto);
-                BtnDirectRetry.IsVisible = false;
-                return;
-            }
-
-            ShowDirect($"Thor em {ip}. mDNS não anunciou; varrendo portas...");
+            // The Thor's wireless-debugging port is random, so scan the known port
+            // range on the discovered IP and connect to the first port adb accepts.
+            ShowDirect($"Thor em {ip}. Procurando a porta do ADB...");
             var connected = await ScanAndConnectAsync(ip, default);
             if (connected)
             {

@@ -112,40 +112,6 @@ public class WifiSessionTests
     }
 
     [Fact]
-    public async Task Disconnect_closes_the_wifi_session_on_adb()
-    {
-        await ConnectWifi();
-        _adb.On($"disconnect {WifiSerial}", $"disconnected {WifiSerial}\n");
-
-        await _connection.DisconnectAsync(default);
-
-        Assert.Null(_connection.Current);
-        Assert.Contains($"disconnect {WifiSerial}", _adb.Calls);
-        Assert.Equal([null], _events);
-    }
-
-    [Fact]
-    public async Task Disconnect_without_a_connection_does_nothing()
-    {
-        await _connection.DisconnectAsync(default);
-
-        Assert.Empty(_adb.Calls);
-        Assert.Empty(_events);
-    }
-
-    [Fact]
-    public async Task Disconnecting_usb_does_not_send_adb_disconnect()
-    {
-        _adb.On("devices -l", Devices(UsbLine()));
-        await _connection.AutoConnectAsync(default);
-
-        await _connection.DisconnectAsync(default);
-
-        Assert.Null(_connection.Current);
-        Assert.DoesNotContain(_adb.Calls, c => c.StartsWith("disconnect"));
-    }
-
-    [Fact]
     public async Task Reconnecting_after_a_drop_works()
     {
         await ConnectWifi();

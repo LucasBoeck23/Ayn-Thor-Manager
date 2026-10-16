@@ -33,49 +33,14 @@ public sealed class DeviceConnection(
     /// <summary>Raised on connect, device switch and connection loss (argument is null).</summary>
     public event Action<ThorDevice?>? StateChanged;
 
-    /// <summary>Devices adb currently knows about (USB and Wi-Fi), with their state.</summary>
-    public async Task<IReadOnlyList<AdbDeviceEntry>> ListDevicesAsync(CancellationToken ct)
+    /// <summary>Devices adb currently knows about, with their state (used to confirm a connect).</summary>
+    private async Task<IReadOnlyList<AdbDeviceEntry>> ListDevicesAsync(CancellationToken ct)
     {
         var result = await RawAsync("devices -l", QuickTimeout, ct);
         return result.IsSuccess ? AdbOutputParser.ParseDevices(result.Value!.StandardOutput) : [];
     }
 
-    /// <summary>
-    /// "Buscar": uses a device adb already sees (USB cable or an existing Wi-Fi
-    /// connection) and, if there is none, devices announcing wireless debugging via mDNS.
-    /// </summary>
-    public async Task<Result<ThorDevice>> AutoConnectAsync(CancellationToken ct)
-    {
-        var devices = await ListDevicesAsync(ct);
-
-        var best = devices
-            .Where(d => d.IsReady)
-            .OrderByDescending(d => d.IsThor)
-            .ThenBy(d => d.Transport == DeviceTransport.Usb ? 0 : 1) // cable is faster and more stable
-            .FirstOrDefault();
-
-        if (best is not null)
-            return Adopt(best);
-
-        // Keep why the announced devices failed: "Nenhum Thor encontrado" would be
-        // wrong when the Thor was found but, e.g., has not authorized this PC.
-        Error? lastMdnsError = null;
-        var mdns = await RawAsync("mdns services", QuickTimeout, ct);
-        if (mdns.IsSuccess)
-        {
-            foreach (var endpoint in AdbOutputParser.ParseMdnsEndpoints(mdns.Value!.StandardOutput))
-            {
-                var connected = await ConnectAsync(endpoint, ct);
-                if (connected.IsSuccess)
-                    return connected;
-                lastMdnsError = connected.Error;
-            }
-        }
-
-        return Fail(lastMdnsError ?? NoDeviceError(devices));
-    }
-
-    /// <summary>Manual connection to <c>ip</c> or <c>ip:port</c> over Wi-Fi.</summary>
+    /// <summary>Wi-Fi connection to <c>ip:port</c> (the hotspot-discovered endpoint).</summary>
     public async Task<Result<ThorDevice>> ConnectAsync(string address, CancellationToken ct)
     {
         var target = (address ?? "").Trim();
@@ -128,19 +93,6 @@ public sealed class DeviceConnection(
         return Fail("CONNECTION_FAILED", $"Não foi possível conectar em {target}. Confira o IP e a porta em 'Depuração sem fio' no Thor.");
     }
 
-    public async Task DisconnectAsync(CancellationToken ct)
-    {
-        var device = Current;
-        if (device is null)
-            return;
-
-        SetCurrent(null);
-
-        // A USB device stays attached; only Wi-Fi connections are closed on the adb side.
-        if (device.Transport == DeviceTransport.Wifi)
-            await RawAsync($"disconnect {device.Serial}", QuickTimeout, ct);
-    }
-
     /// <summary>
     /// Runs an adb command against the current device. If adb reports the device is
     /// gone, the connection state is cleared so the UI reflects it.
@@ -176,20 +128,6 @@ public sealed class DeviceConnection(
         logger.LogInformation("Using device {Serial} ({Transport}, {Model})", device.Serial, device.Transport, device.Model);
         SetCurrent(device);
         return Result<ThorDevice>.Success(device);
-    }
-
-    private static Error NoDeviceError(IReadOnlyList<AdbDeviceEntry> devices)
-    {
-        if (devices.Any(d => d.State == "unauthorized"))
-            return new Error("UNAUTHORIZED",
-                "O Thor foi encontrado mas não autorizou este PC. Aceite o pedido de depuração na tela do Thor.");
-
-        if (devices.Any(d => d.State == "offline"))
-            return new Error("DEVICE_OFFLINE",
-                "O Thor está offline. Reconecte o cabo ou reative a 'Depuração sem fio'.");
-
-        return new Error("NO_DEVICE",
-            "Nenhum Thor encontrado. Conecte o cabo USB ou ative a 'Depuração sem fio' no Thor, na mesma rede do PC.");
     }
 
     private void SetCurrent(ThorDevice? device)
