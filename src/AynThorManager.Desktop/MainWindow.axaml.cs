@@ -1,9 +1,11 @@
 using System.Runtime.InteropServices;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using AynThorManager.Core.Interfaces;
 using AynThorManager.Desktop.Embedding;
 using AynThorManager.Infrastructure.Adb;
 using AynThorManager.Services.Adb;
+using AynThorManager.Services.Connection;
 using AynThorManager.Services.FileStorage;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -12,9 +14,7 @@ namespace AynThorManager.Desktop;
 
 public partial class MainWindow : Window
 {
-    private readonly IAdbCommandExecutor _executor;
-    private readonly ICommandQueue _commandQueue;
-    private readonly AdbConnectionService _connectionService;
+    private readonly DeviceConnection _device;
     private readonly IFileStorageService _fileService;
     private readonly IScreenEmbedder _embedder;
     private string _currentPath = "/storage/";
@@ -25,10 +25,12 @@ public partial class MainWindow : Window
         Closing += MainWindow_Closing;
 
         var options = Options.Create(new AdbOptions { AdbPath = "adb" });
-        _executor = new AdbCommandExecutor(options, NullLogger<AdbCommandExecutor>.Instance);
-        _commandQueue = new CommandQueue(_executor, NullLogger<CommandQueue>.Instance);
-        _connectionService = new AdbConnectionService(_commandQueue, NullLogger<AdbConnectionService>.Instance);
-        _fileService = new FileStorageService(_commandQueue, _connectionService, NullLogger<FileStorageService>.Instance);
+        var executor = new AdbCommandExecutor(options, NullLogger<AdbCommandExecutor>.Instance);
+        var queue = new CommandQueue(executor, NullLogger<CommandQueue>.Instance);
+
+        _device = new DeviceConnection(queue, NullLogger<DeviceConnection>.Instance);
+        _device.StateChanged += device => Dispatcher.UIThread.Post(() => OnDeviceChanged(device));
+        _fileService = new FileStorageService(_device, NullLogger<FileStorageService>.Instance);
 
         _embedder = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
             ? new Win32ScreenEmbedder()
@@ -38,14 +40,6 @@ public partial class MainWindow : Window
     private void MainWindow_Closing(object? sender, WindowClosingEventArgs e)
     {
         KillScrcpy();
-    }
-
-    private string GetAdbTargetPrefix()
-    {
-        var serial = _connectionService.CurrentStatus.IpAddress;
-        if (serial is null) return "";
-        if (!serial.Contains(':')) serial += ":5555";
-        return $"-s {serial} ";
     }
 
     private static string FormatSize(long bytes)

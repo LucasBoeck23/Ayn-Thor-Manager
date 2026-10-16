@@ -1,11 +1,18 @@
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using AynThorManager.Core.Models;
+using AynThorManager.Services.Connection;
 
 namespace AynThorManager.Desktop;
 
+/// <summary>
+/// Connection UI. All device logic lives in <see cref="DeviceConnection"/>;
+/// this file only forwards clicks and renders the result.
+/// </summary>
 public partial class MainWindow
 {
+    private const string CompanionPackage = "com.aynthor.link";
+
     private static readonly IBrush SuccessBrush = SolidColorBrush.Parse("#00e676");
     private static readonly IBrush DangerBrush = SolidColorBrush.Parse("#ff5252");
     private static readonly IBrush AccentBrush = SolidColorBrush.Parse("#00d4ff");
@@ -13,150 +20,113 @@ public partial class MainWindow
 
     private async void BtnScan_Click(object? sender, RoutedEventArgs e)
     {
-        BtnScan.IsEnabled = false;
+        SetConnectButtonsEnabled(false);
         ConnMessage.Text = "Buscando...";
-
-        try
-        {
-            var result = await _executor.ExecuteAsync("devices", TimeSpan.FromSeconds(3), default);
-            if (result.Success)
-            {
-                foreach (var line in result.StandardOutput.Split('\n'))
-                {
-                    if (line.StartsWith("List") || !line.Contains('\t')) continue;
-                    var parts = line.Split('\t');
-                    if (parts.Length >= 2 && parts[0].Contains(':'))
-                    {
-                        var addr = parts[0].Trim();
-                        IpInput.Text = addr;
-                        await ConnectToDevice(addr);
-                        return;
-                    }
-                }
-            }
-
-            var mdns = await _executor.ExecuteAsync("mdns services", TimeSpan.FromSeconds(3), default);
-            if (mdns.Success && !string.IsNullOrWhiteSpace(mdns.StandardOutput))
-            {
-                foreach (var line in mdns.StandardOutput.Split('\n'))
-                {
-                    if (line.StartsWith("List")) continue;
-                    var parts = line.Split('\t', StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length >= 3)
-                    {
-                        var endpoint = parts[^1].Trim();
-                        if (endpoint.Contains(':'))
-                        {
-                            IpInput.Text = endpoint;
-                            await ConnectToDevice(endpoint);
-                            return;
-                        }
-                    }
-                }
-            }
-
-            ConnMessage.Text = "Nenhum device encontrado.\nAtive 'Depuracao sem fio' no Thor e tente novamente.";
-        }
+        try { await ShowConnectResult(await _device.AutoConnectAsync(default)); }
         catch (Exception ex) { ConnMessage.Text = $"Erro: {ex.Message}"; }
-        finally { BtnScan.IsEnabled = true; }
+        finally { SetConnectButtonsEnabled(true); }
     }
 
     private async void BtnConnect_Click(object? sender, RoutedEventArgs e)
     {
-        var ip = (IpInput.Text ?? "").Trim();
-        if (string.IsNullOrEmpty(ip)) { ConnMessage.Text = "Digite o IP"; return; }
-
-        if (ip.EndsWith(":7100"))
-        {
-            ConnMessage.Text = "Porta 7100 e do companion, nao do ADB.\nUse 'Buscar' para encontrar a porta correta.";
-            return;
-        }
-
-        await ConnectToDevice(ip);
-    }
-
-    private async Task ConnectToDevice(string address)
-    {
+        SetConnectButtonsEnabled(false);
         ConnMessage.Text = "Conectando...";
-        var result = await _connectionService.ConnectAsync(address, default);
-
-        if (result.IsSuccess && result.Value!.Status == DeviceStatusType.Connected)
-        {
-            var target = address.Contains(':') ? address : $"{address}:5555";
-            var verify = await _executor.ExecuteAsync($"-s {target} shell echo ok", TimeSpan.FromSeconds(3), default);
-
-            if (!verify.Success || !verify.StandardOutput.Contains("ok"))
-            {
-                await _executor.ExecuteAsync($"disconnect {target}", TimeSpan.FromSeconds(3), default);
-                StatusDot.Fill = DangerBrush;
-                StatusText.Text = "Desconectado";
-                ConnMessage.Text = "Device offline. Ative 'Depuracao sem fio' no Thor e tente novamente.";
-                BtnInstallCompanion.IsVisible = false;
-                return;
-            }
-
-            StatusDot.Fill = SuccessBrush;
-            StatusText.Text = $"Conectado ({address})";
-            ConnMessage.Text = "Conectado!";
-
-            StartNetStats();
-            await InstallCompanionIfNeeded();
-            await LoadDirectory();
-        }
-        else
-        {
-            ConnMessage.Text = result.Error?.Message ?? result.Value?.Message ?? "Falha ao conectar";
-        }
+        try { await ShowConnectResult(await _device.ConnectAsync(IpInput.Text ?? "", default)); }
+        catch (Exception ex) { ConnMessage.Text = $"Erro: {ex.Message}"; }
+        finally { SetConnectButtonsEnabled(true); }
     }
 
-    private async Task InstallCompanionIfNeeded()
+    private void SetConnectButtonsEnabled(bool enabled)
     {
-        var target = GetAdbTargetPrefix();
+        BtnScan.IsEnabled = enabled;
+        BtnConnect.IsEnabled = enabled;
+    }
 
-        var check = await _executor.ExecuteAsync($"{target}shell pm list packages com.aynthor.link", TimeSpan.FromSeconds(5), default);
-        if (check.Success && check.StandardOutput.Contains("com.aynthor.link"))
+    private async Task ShowConnectResult(Result<ThorDevice> result)
+    {
+        if (!result.IsSuccess)
         {
-            BtnInstallCompanion.IsVisible = false;
+            ConnMessage.Text = result.Error!.Message;
             return;
         }
 
-        BtnInstallCompanion.IsVisible = true;
-        ConnMessage.Text = "Companion nao encontrado no Thor.";
+        var device = result.Value!;
+        if (device.Transport == DeviceTransport.Wifi)
+            IpInput.Text = device.Serial;
+
+        ConnMessage.Text = "Conectado!";
+        await CheckCompanion();
+
+        _currentPath = "/storage/";
+        await LoadDirectory();
+    }
+
+    /// <summary>Keeps the header in sync with the real connection, including drops.</summary>
+    private void OnDeviceChanged(ThorDevice? device)
+    {
+        if (device is null)
+        {
+            StatusDot.Fill = DangerBrush;
+            StatusText.Text = "Desconectado";
+            BtnInstallCompanion.IsVisible = false;
+            StopNetStats();
+            return;
+        }
+
+        var via = device.Transport == DeviceTransport.Usb ? "USB" : "Wi-Fi";
+        StatusDot.Fill = SuccessBrush;
+        StatusText.Text = $"Conectado via {via} ({device.Model})";
+        StartNetStats();
+    }
+
+    private async Task CheckCompanion()
+    {
+        var check = await _device.RunAsync($"shell pm list packages {CompanionPackage}", TimeSpan.FromSeconds(5), default);
+        var installed = check.IsSuccess && check.Value!.StandardOutput.Contains(CompanionPackage);
+
+        BtnInstallCompanion.IsVisible = !installed;
+        if (!installed)
+            ConnMessage.Text = "Conectado. O Ayn Thor Link não está instalado no Thor.";
     }
 
     private bool _installing;
     private async void BtnInstallCompanion_Click(object? sender, RoutedEventArgs e)
     {
         if (_installing) return;
-        _installing = true;
 
         var apkPath = FindApkPath();
         if (apkPath is null)
         {
-            ConnMessage.Text = "APK nao encontrado no PC.";
-            _installing = false;
+            ConnMessage.Text = "APK do Ayn Thor Link não encontrado no PC.";
             return;
         }
 
+        _installing = true;
         BtnInstallCompanion.Content = "⏳ Instalando...";
-        var target = GetAdbTargetPrefix();
 
-        var install = await _executor.ExecuteAsync($"{target}install -r \"{System.IO.Path.GetFullPath(apkPath)}\"", TimeSpan.FromSeconds(60), default);
-        if (install.Success && install.StandardOutput.Contains("Success"))
+        try
         {
-            await _executor.ExecuteAsync($"{target}shell pm grant com.aynthor.link android.permission.WRITE_SECURE_SETTINGS", TimeSpan.FromSeconds(5), default);
-            await _executor.ExecuteAsync($"{target}shell am start -n com.aynthor.link/.MainActivity", TimeSpan.FromSeconds(5), default);
+            var install = await _device.RunAsync($"install -r \"{System.IO.Path.GetFullPath(apkPath)}\"", TimeSpan.FromSeconds(60), default);
+            if (install.IsSuccess && install.Value!.StandardOutput.Contains("Success"))
+            {
+                await _device.RunAsync($"shell pm grant {CompanionPackage} android.permission.WRITE_SECURE_SETTINGS", TimeSpan.FromSeconds(5), default);
+                await _device.RunAsync($"shell am start -n {CompanionPackage}/.MainActivity", TimeSpan.FromSeconds(5), default);
 
-            BtnInstallCompanion.IsVisible = false;
-            ConnMessage.Text = "Ayn Thor Link instalado!\nPode desativar 'Depuracao sem fio' no Thor.";
+                BtnInstallCompanion.IsVisible = false;
+                ConnMessage.Text = "Ayn Thor Link instalado!";
+            }
+            else
+            {
+                ConnMessage.Text = install.IsSuccess
+                    ? $"Falha ao instalar: {(install.Value!.StandardError + " " + install.Value.StandardOutput).Trim()}"
+                    : install.Error!.Message;
+            }
         }
-        else
+        finally
         {
-            ConnMessage.Text = $"Falha: {(install.StandardError + " " + install.StandardOutput).Trim()}";
             BtnInstallCompanion.Content = "📲 Instalar Ayn Thor Link";
+            _installing = false;
         }
-
-        _installing = false;
     }
 
     private static string? FindApkPath()

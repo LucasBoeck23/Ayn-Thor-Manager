@@ -6,7 +6,7 @@ public static class IpAddressValidator
 {
     private static readonly Error InvalidFormatError = new(
         Code: "INVALID_IP_FORMAT",
-        Message: "O endereÃ§o IP fornecido nÃ£o estÃ¡ em formato IPv4 vÃ¡lido (quatro octetos numÃ©ricos de 0 a 255 separados por ponto).");
+        Message: "Endereço inválido. Use o formato IP ou IP:porta, por exemplo 192.168.1.17:43321.");
 
     public static Result Validate(string? ipAddress)
     {

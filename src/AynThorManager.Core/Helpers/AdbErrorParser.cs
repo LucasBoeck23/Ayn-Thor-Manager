@@ -11,22 +11,22 @@ public static class AdbErrorParser
         if (combined.Contains("no such file or directory"))
         {
             var message = contextPath is not null
-                ? $"O caminho nÃ£o foi encontrado: {contextPath}"
-                : "O caminho nÃ£o foi encontrado.";
+                ? $"O caminho não foi encontrado: {contextPath}"
+                : "O caminho não foi encontrado.";
             return new Error("PATH_NOT_FOUND", message);
         }
 
         if (combined.Contains("permission denied") || combined.Contains("read-only file system"))
         {
             var message = contextPath is not null
-                ? $"PermissÃ£o negada: {contextPath}"
-                : "PermissÃ£o negada.";
+                ? $"Permissão negada: {contextPath}"
+                : "Permissão negada.";
             return new Error("PERMISSION_DENIED", message);
         }
 
         if (combined.Contains("file exists") || combined.Contains("already exists") || combined.Contains("cannot move"))
         {
-            return new Error("NAME_ALREADY_EXISTS", "JÃ¡ existe um item com esse nome no diretÃ³rio.");
+            return new Error("NAME_ALREADY_EXISTS", "Já existe um item com esse nome no diretório.");
         }
 
         return null;

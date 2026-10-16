@@ -11,6 +11,7 @@ public partial class MainWindow
 
     private void StartNetStats()
     {
+        _netStatsTimer?.Stop(); // switching device must not leave two timers running
         NetStatsPanel.IsVisible = true;
         _netStatsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _netStatsTimer.Tick += async (_, _) => await UpdateNetStats();
@@ -27,15 +28,13 @@ public partial class MainWindow
 
     private async Task UpdateNetStats()
     {
-        if (!_connectionService.IsConnected) return;
-
-        var target = GetAdbTargetPrefix();
+        if (!_device.IsConnected) return;
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var ping = await _executor.ExecuteAsync($"{target}shell echo ok", TimeSpan.FromSeconds(2), default);
+        var ping = await _device.RunAsync("shell echo ok", TimeSpan.FromSeconds(2), default);
         sw.Stop();
 
-        if (ping.Success)
+        if (ping.IsSuccess && ping.Value!.Success)
         {
             var latency = (int)sw.ElapsedMilliseconds;
             _pingHistory += latency;
@@ -48,10 +47,10 @@ public partial class MainWindow
             TxtBand.Text = bandEst;
         }
 
-        var wifi = await _executor.ExecuteAsync($"{target}shell dumpsys wifi | grep -m1 \"rssi=\"", TimeSpan.FromSeconds(2), default);
-        if (wifi.Success && !string.IsNullOrWhiteSpace(wifi.StandardOutput))
+        var wifi = await _device.RunAsync("shell dumpsys wifi | grep -m1 \"rssi=\"", TimeSpan.FromSeconds(2), default);
+        if (wifi.IsSuccess && !string.IsNullOrWhiteSpace(wifi.Value!.StandardOutput))
         {
-            var lines = wifi.StandardOutput;
+            var lines = wifi.Value.StandardOutput;
 
             var freqMatch = Regex.Match(lines, @"f=(\d+)");
             if (freqMatch.Success)

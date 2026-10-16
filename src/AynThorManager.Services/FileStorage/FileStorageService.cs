@@ -4,13 +4,13 @@ using AynThorManager.Core.Interfaces;
 using AynThorManager.Core.Models;
 using AynThorManager.Core.Models.Responses;
 using AynThorManager.Core.Validators;
+using AynThorManager.Services.Connection;
 using Microsoft.Extensions.Logging;
 
 namespace AynThorManager.Services.FileStorage;
 
 public sealed class FileStorageService(
-    ICommandQueue commandQueue,
-    IAdbConnectionManager connectionManager,
+    DeviceConnection device,
     ILogger<FileStorageService> logger) : IFileStorageService
 {
     private static readonly TimeSpan ListDirectoryTimeout = TimeSpan.FromSeconds(10);
@@ -122,10 +122,10 @@ public sealed class FileStorageService(
             return pathValidation.Error!;
         }
 
-        if (!connectionManager.IsConnected)
+        if (!device.IsConnected)
         {
             logger.LogWarning("Operation rejected: device not connected");
-            return new Error("DEVICE_NOT_CONNECTED", "O dispositivo nÃ£o estÃ¡ conectado via ADB.");
+            return new Error("DEVICE_NOT_CONNECTED", "O Thor não está conectado.");
         }
 
         return null;
@@ -133,12 +133,12 @@ public sealed class FileStorageService(
 
     private async Task<Result<CommandResult>> ExecuteAndParseAsync(AdbCommand command, string contextPath, CancellationToken ct)
     {
-        var result = await commandQueue.EnqueueAsync(command, CommandPriority.Normal, ct);
+        var result = await device.RunAsync(command.Arguments, command.Timeout, ct);
 
         if (!result.IsSuccess)
         {
-            logger.LogWarning("Command failed: {Description} â€” {Error}", command.Description, result.Error!.Code);
-            return Result<CommandResult>.Failure(new Error("TIMEOUT", "O dispositivo nÃ£o respondeu dentro do tempo limite."));
+            logger.LogWarning("Command failed: {Description} - {Error}", command.Description, result.Error!.Code);
+            return Result<CommandResult>.Failure(result.Error);
         }
 
         var commandResult = result.Value!;
@@ -153,7 +153,9 @@ public sealed class FileStorageService(
         if (!commandResult.Success)
         {
             logger.LogWarning("Command failed with exit code {ExitCode}: {Stderr}", commandResult.ExitCode, commandResult.StandardError);
-            return Result<CommandResult>.Failure(new Error("DEVICE_OPERATION_FAILED", "Falha na operaÃ§Ã£o no dispositivo."));
+            var detail = (commandResult.StandardError + " " + commandResult.StandardOutput).Trim();
+            return Result<CommandResult>.Failure(new Error("DEVICE_OPERATION_FAILED",
+                string.IsNullOrEmpty(detail) ? "Falha na operação no Thor." : $"Falha na operação no Thor: {detail}"));
         }
 
         return Result<CommandResult>.Success(commandResult);
