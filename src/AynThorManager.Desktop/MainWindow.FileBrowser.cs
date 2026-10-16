@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using AynThorManager.Core.Models;
@@ -28,15 +29,19 @@ public partial class MainWindow
 
         foreach (var entry in result.Value!.Entries)
         {
+            var isDir = entry.Type == FileEntryType.Directory;
             _files.Add(new FileItem
             {
-                Icon = entry.Type == FileEntryType.Directory ? "📁" : "📄",
+                Icon = FileItem.IconFor(entry.Name, isDir),
                 Name = entry.Name,
-                Size = entry.Type == FileEntryType.File ? FormatSize(entry.SizeBytes) : "",
-                IsDirectory = entry.Type == FileEntryType.Directory,
+                Size = isDir ? "" : FormatSize(entry.SizeBytes),
+                Modified = FormatDate(entry.ModifiedAt),
+                IsDirectory = isDir,
                 FullPath = _currentPath + entry.Name
             });
         }
+
+        EmptyHint.IsVisible = _files.Count == 0;
     }
 
     private async void FileList_DoubleTapped(object? sender, TappedEventArgs e)
@@ -68,4 +73,44 @@ public partial class MainWindow
         if (result.IsSuccess) await LoadDirectory();
         else ConnMessage.Text = result.Error!.Message;
     }
+
+    private async void BtnRefresh_Click(object? sender, RoutedEventArgs e) => await LoadDirectory();
+
+    private async void BtnRename_Click(object? sender, RoutedEventArgs e)
+    {
+        var item = SelectedFile(sender);
+        if (item is null) return;
+
+        var dialog = new InputDialog($"Novo nome para \"{item.Name}\":", item.Name);
+        var ok = await dialog.ShowDialog<bool>(this);
+        if (!ok || string.IsNullOrWhiteSpace(dialog.Result) || dialog.Result == item.Name) return;
+
+        var result = await _fileService.RenameAsync(item.FullPath, dialog.Result, default);
+        if (result.IsSuccess) await LoadDirectory();
+        else ConnMessage.Text = result.Error!.Message;
+    }
+
+    private async void BtnDelete_Click(object? sender, RoutedEventArgs e)
+    {
+        var item = SelectedFile(sender);
+        if (item is null) return;
+
+        var kind = item.IsDirectory ? "a pasta" : "o arquivo";
+        var confirm = new ConfirmDialog(
+            "Confirmar exclusão",
+            $"Excluir {kind} \"{item.Name}\"?" + (item.IsDirectory ? "\nTodo o conteúdo será removido." : ""));
+        if (!await confirm.ShowDialog<bool>(this)) return;
+
+        var result = await _fileService.DeleteAsync(item.FullPath, default);
+        if (result.IsSuccess) await LoadDirectory();
+        else ConnMessage.Text = result.Error!.Message;
+    }
+
+    /// <summary>
+    /// Resolves the file item a context-menu/action click targets: the item bound
+    /// to the clicked control, falling back to the current list selection.
+    /// </summary>
+    private FileItem? SelectedFile(object? sender) =>
+        (sender as Control)?.DataContext as FileItem
+        ?? FileList.SelectedItem as FileItem;
 }

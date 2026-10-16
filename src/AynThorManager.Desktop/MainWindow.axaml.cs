@@ -45,6 +45,9 @@ public partial class MainWindow : Window
         var i = (int)Math.Floor(Math.Log(bytes, 1024));
         return $"{bytes / Math.Pow(1024, i):F1} {units[i]}";
     }
+
+    private static string FormatDate(DateTimeOffset when) =>
+        when == DateTimeOffset.MinValue ? "" : when.ToLocalTime().ToString("dd/MM/yy HH:mm");
 }
 
 public class FileItem
@@ -52,6 +55,28 @@ public class FileItem
     public string Icon { get; set; } = "";
     public string Name { get; set; } = "";
     public string Size { get; set; } = "";
+    public string Modified { get; set; } = "";
     public bool IsDirectory { get; set; }
     public string FullPath { get; set; } = "";
+
+    /// <summary>Picks an emoji icon from the entry type and file extension.</summary>
+    public static string IconFor(string name, bool isDirectory)
+    {
+        if (isDirectory) return "📁";
+
+        var ext = System.IO.Path.GetExtension(name).ToLowerInvariant();
+        return ext switch
+        {
+            ".apk" or ".xapk" => "📦",
+            ".zip" or ".rar" or ".7z" or ".gz" or ".tar" => "🗜️",
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".bmp" => "🖼️",
+            ".mp4" or ".mkv" or ".avi" or ".mov" or ".webm" => "🎬",
+            ".mp3" or ".wav" or ".flac" or ".ogg" or ".m4a" => "🎵",
+            ".pdf" => "📕",
+            ".txt" or ".md" or ".log" or ".json" or ".xml" or ".ini" or ".cfg" => "📄",
+            ".iso" or ".bin" or ".img" => "💿",
+            ".sav" or ".srm" or ".state" => "🎮",
+            _ => "📄",
+        };
+    }
 }

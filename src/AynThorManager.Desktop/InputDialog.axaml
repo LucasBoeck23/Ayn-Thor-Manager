@@ -1,19 +1,18 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="AynThorManager.Desktop.InputDialog"
-        Title="Input" Width="320" Height="150"
+        Title="Input" Width="360" Height="170"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         Background="#16213e">
-    <StackPanel Margin="16">
-        <TextBlock x:Name="Prompt" Foreground="#e0e0e0" FontSize="13" Margin="0,0,0,10" />
-        <TextBox x:Name="InputBox" Padding="6" FontSize="13"
-                 Background="#0e1a30" Foreground="#e0e0e0" BorderBrush="#0f3460" />
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="Cancelar" Padding="10,5" Margin="0,0,8,0" Click="Cancel_Click"
-                    Background="#0f3460" Foreground="#e0e0e0" BorderThickness="0" />
-            <Button Content="OK" Padding="10,5" Click="Ok_Click"
-                    Background="#00d4ff" Foreground="Black" BorderThickness="0" />
+    <Border BorderBrush="#0f3460" BorderThickness="1">
+        <StackPanel Margin="20">
+            <TextBlock x:Name="Prompt" Foreground="#e0e0e0" FontSize="13" Margin="0,0,0,12" TextWrapping="Wrap" />
+            <TextBox x:Name="InputBox" Classes="input" FontSize="13" Padding="8,6" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0" Spacing="8">
+                <Button Content="Cancelar" Click="Cancel_Click" Classes="btn default" />
+                <Button Content="OK" Click="Ok_Click" Classes="btn primary" />
+            </StackPanel>
         </StackPanel>
-    </StackPanel>
+    </Border>
 </Window>

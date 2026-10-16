@@ -12,10 +12,11 @@ public partial class InputDialog : Window
     // Parameterless ctor required by the Avalonia XAML tooling.
     public InputDialog() : this("") { }
 
-    public InputDialog(string prompt)
+    public InputDialog(string prompt, string initialValue = "")
     {
         InitializeComponent();
         Prompt.Text = prompt;
+        InputBox.Text = initialValue;
 
         InputBox.KeyDown += (_, e) =>
         {
@@ -23,7 +24,11 @@ public partial class InputDialog : Window
             else if (e.Key == Key.Escape) Close(false);
         };
 
-        Opened += (_, _) => Dispatcher.UIThread.Post(() => InputBox.Focus());
+        Opened += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            InputBox.Focus();
+            InputBox.SelectAll(); // so renaming pre-selects the current name
+        });
     }
 
     private void Ok_Click(object? sender, RoutedEventArgs e) => Close(true);
