@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using AynThorManager.Core.Interfaces;
-using AynThorManager.Desktop.Embedding;
 using AynThorManager.Infrastructure.Adb;
 using AynThorManager.Services.Adb;
 using AynThorManager.Services.Connection;
@@ -16,7 +14,6 @@ public partial class MainWindow : Window
 {
     private readonly DeviceConnection _device;
     private readonly IFileStorageService _fileService;
-    private readonly IScreenEmbedder _embedder;
     private string _currentPath = "/storage/";
 
     public MainWindow()
@@ -24,22 +21,21 @@ public partial class MainWindow : Window
         InitializeComponent();
         Closing += MainWindow_Closing;
 
-        var options = Options.Create(new AdbOptions { AdbPath = "adb" });
+        // Prefer an adb with working mDNS (official platform-tools) so wireless
+        // debugging ports can be discovered; fall back to PATH otherwise.
+        var adbPath = AdbLocator.ResolveAsync(AdbLocator.DefaultCandidates()).GetAwaiter().GetResult();
+        var options = Options.Create(new AdbOptions { AdbPath = adbPath });
         var executor = new AdbCommandExecutor(options, NullLogger<AdbCommandExecutor>.Instance);
         var queue = new CommandQueue(executor, NullLogger<CommandQueue>.Instance);
 
         _device = new DeviceConnection(queue, NullLogger<DeviceConnection>.Instance);
         _device.StateChanged += device => Dispatcher.UIThread.Post(() => OnDeviceChanged(device));
         _fileService = new FileStorageService(_device, NullLogger<FileStorageService>.Instance);
-
-        _embedder = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? new Win32ScreenEmbedder()
-            : new X11ScreenEmbedder();
     }
 
-    private void MainWindow_Closing(object? sender, WindowClosingEventArgs e)
+    private async void MainWindow_Closing(object? sender, WindowClosingEventArgs e)
     {
-        KillScrcpy();
+        await StopStreamingAsync();
     }
 
     private static string FormatSize(long bytes)
