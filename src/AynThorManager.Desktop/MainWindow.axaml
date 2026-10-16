@@ -1,0 +1,115 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:emb="clr-namespace:AynThorManager.Desktop.Embedding"
+        xmlns:local="clr-namespace:AynThorManager.Desktop"
+        x:Class="AynThorManager.Desktop.MainWindow"
+        Title="Ayn Thor Manager" Width="1100" Height="750"
+        WindowStartupLocation="CenterScreen"
+        Background="#1a1a2e">
+
+    <Grid ColumnDefinitions="350,*">
+
+        <!-- Painel esquerdo: Conexao + Navegador de arquivos -->
+        <Border Grid.Column="0" Background="#16213e" BorderBrush="#0f3460" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <!-- Header -->
+                <Border DockPanel.Dock="Top" Padding="12" BorderBrush="#0f3460" BorderThickness="0,0,0,1">
+                    <StackPanel>
+                        <TextBlock Text="Ayn Thor Manager" FontSize="16" FontWeight="Bold" Foreground="#00d4ff" />
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Ellipse x:Name="StatusDot" Width="10" Height="10" Fill="#ff5252" Margin="0,0,6,0" />
+                            <TextBlock x:Name="StatusText" Text="Desconectado" FontSize="11" Foreground="#78909c" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Conexao -->
+                <Border DockPanel.Dock="Top" Padding="12" BorderBrush="#0f3460" BorderThickness="0,0,0,1">
+                    <StackPanel>
+                        <TextBlock Text="Conexao" FontSize="11" Foreground="#78909c" Margin="0,0,0,6" />
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox x:Name="IpInput" Grid.Column="0" Classes="input" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0">
+                                <Button x:Name="BtnScan" Content="Buscar" Click="BtnScan_Click" Classes="btn default" Margin="0,0,4,0" />
+                                <Button x:Name="BtnConnect" Content="Conectar" Click="BtnConnect_Click" Classes="btn primary" />
+                            </StackPanel>
+                        </Grid>
+                        <Button x:Name="BtnInstallCompanion" Content="📲 Instalar Ayn Thor Link"
+                                Click="BtnInstallCompanion_Click" IsVisible="False"
+                                Classes="btn primary" Margin="0,8,0,0" HorizontalAlignment="Stretch" />
+                        <TextBlock x:Name="ConnMessage" FontSize="11" Foreground="#78909c" Margin="0,4,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Navegador de arquivos -->
+                <DockPanel>
+                    <!-- Stats de rede -->
+                    <Border DockPanel.Dock="Top" x:Name="NetStatsPanel" Padding="8,6"
+                            BorderBrush="#0f3460" BorderThickness="0,0,0,1" IsVisible="False">
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+                            <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal">
+                                <TextBlock FontSize="10" Foreground="#78909c" Text="Ping: " />
+                                <TextBlock x:Name="TxtPing" FontSize="10" Foreground="#00d4ff" Text="--" />
+                                <TextBlock FontSize="10" Foreground="#78909c" Text=" ms" />
+                            </StackPanel>
+                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                                <TextBlock FontSize="10" Foreground="#78909c" Text="Banda: " />
+                                <TextBlock x:Name="TxtBand" FontSize="10" Foreground="#00d4ff" Text="--" />
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="0,2,0,0">
+                                <TextBlock FontSize="10" Foreground="#78909c" Text="Wi-Fi: " />
+                                <TextBlock x:Name="TxtFreq" FontSize="10" Foreground="#00d4ff" Text="--" />
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,2,0,0">
+                                <TextBlock FontSize="10" Foreground="#78909c" Text="Sinal: " />
+                                <TextBlock x:Name="TxtSignal" FontSize="10" Foreground="#00d4ff" Text="--" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Barra de caminho -->
+                    <Border DockPanel.Dock="Top" Padding="8" BorderBrush="#0f3460" BorderThickness="0,0,0,1">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Button Grid.Column="0" Content="^" Click="BtnUp_Click" Width="28" Classes="btn default" Padding="4" />
+                            <TextBlock x:Name="PathDisplay" Grid.Column="1" Text="/storage/" VerticalAlignment="Center"
+                                       Margin="8,0" FontFamily="monospace" FontSize="11" Foreground="#00d4ff" />
+                            <Button Grid.Column="2" Content="+" Click="BtnNewFolder_Click" Width="28" Classes="btn default" Padding="4" ToolTip.Tip="Nova pasta" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Lista de arquivos -->
+                    <ListBox x:Name="FileList" Background="Transparent" BorderThickness="0"
+                             Foreground="#e0e0e0" FontSize="12"
+                             DoubleTapped="FileList_DoubleTapped">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="local:FileItem">
+                                <StackPanel Orientation="Horizontal" Margin="4,3">
+                                    <TextBlock Text="{Binding Icon}" Width="20" />
+                                    <TextBlock Text="{Binding Name}" Foreground="#e0e0e0" />
+                                    <TextBlock Text="{Binding Size}" Margin="8,0,0,0" Foreground="#78909c" FontSize="10" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Painel direito: scrcpy embutido -->
+        <DockPanel Grid.Column="1">
+            <!-- Toolbar do stream -->
+            <Border DockPanel.Dock="Top" Padding="12" Background="#16213e" BorderBrush="#0f3460" BorderThickness="0,0,0,1">
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="BtnStream" Content="Espelhar Tela" Click="BtnStream_Click" Classes="btn primary" Margin="0,0,8,0" />
+                    <Button x:Name="BtnStopStream" Content="Parar" Click="BtnStopStream_Click" Classes="btn danger" IsVisible="False" />
+                    <TextBlock x:Name="StreamStatus" Text="Inativo" VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11" Foreground="#78909c" />
+                </StackPanel>
+            </Border>
+
+            <!-- Area host do scrcpy -->
+            <Border Background="Black">
+                <emb:ScrcpyHost x:Name="ScrcpyPanel" />
+            </Border>
+        </DockPanel>
+    </Grid>
+</Window>

@@ -1,12 +1,17 @@
-using System.Windows;
-using System.Windows.Media;
+using Avalonia.Interactivity;
+using Avalonia.Media;
 using AynThorManager.Core.Models;
 
 namespace AynThorManager.Desktop;
 
 public partial class MainWindow
 {
-    private async void BtnScan_Click(object sender, RoutedEventArgs e)
+    private static readonly IBrush SuccessBrush = SolidColorBrush.Parse("#00e676");
+    private static readonly IBrush DangerBrush = SolidColorBrush.Parse("#ff5252");
+    private static readonly IBrush AccentBrush = SolidColorBrush.Parse("#00d4ff");
+    private static readonly IBrush SecondaryBrush = SolidColorBrush.Parse("#78909c");
+
+    private async void BtnScan_Click(object? sender, RoutedEventArgs e)
     {
         BtnScan.IsEnabled = false;
         ConnMessage.Text = "Buscando...";
@@ -56,9 +61,9 @@ public partial class MainWindow
         finally { BtnScan.IsEnabled = true; }
     }
 
-    private async void BtnConnect_Click(object sender, RoutedEventArgs e)
+    private async void BtnConnect_Click(object? sender, RoutedEventArgs e)
     {
-        var ip = IpInput.Text.Trim();
+        var ip = (IpInput.Text ?? "").Trim();
         if (string.IsNullOrEmpty(ip)) { ConnMessage.Text = "Digite o IP"; return; }
 
         if (ip.EndsWith(":7100"))
@@ -83,14 +88,14 @@ public partial class MainWindow
             if (!verify.Success || !verify.StandardOutput.Contains("ok"))
             {
                 await _executor.ExecuteAsync($"disconnect {target}", TimeSpan.FromSeconds(3), default);
-                StatusDot.Fill = (Brush)FindResource("Danger");
+                StatusDot.Fill = DangerBrush;
                 StatusText.Text = "Desconectado";
                 ConnMessage.Text = "Device offline. Ative 'Depuracao sem fio' no Thor e tente novamente.";
-                BtnInstallCompanion.Visibility = Visibility.Collapsed;
+                BtnInstallCompanion.IsVisible = false;
                 return;
             }
 
-            StatusDot.Fill = (Brush)FindResource("Success");
+            StatusDot.Fill = SuccessBrush;
             StatusText.Text = $"Conectado ({address})";
             ConnMessage.Text = "Conectado!";
 
@@ -111,16 +116,16 @@ public partial class MainWindow
         var check = await _executor.ExecuteAsync($"{target}shell pm list packages com.aynthor.link", TimeSpan.FromSeconds(5), default);
         if (check.Success && check.StandardOutput.Contains("com.aynthor.link"))
         {
-            BtnInstallCompanion.Visibility = Visibility.Collapsed;
+            BtnInstallCompanion.IsVisible = false;
             return;
         }
 
-        BtnInstallCompanion.Visibility = Visibility.Visible;
+        BtnInstallCompanion.IsVisible = true;
         ConnMessage.Text = "Companion nao encontrado no Thor.";
     }
 
     private bool _installing;
-    private async void BtnInstallCompanion_Click(object sender, RoutedEventArgs e)
+    private async void BtnInstallCompanion_Click(object? sender, RoutedEventArgs e)
     {
         if (_installing) return;
         _installing = true;
@@ -142,7 +147,7 @@ public partial class MainWindow
             await _executor.ExecuteAsync($"{target}shell pm grant com.aynthor.link android.permission.WRITE_SECURE_SETTINGS", TimeSpan.FromSeconds(5), default);
             await _executor.ExecuteAsync($"{target}shell am start -n com.aynthor.link/.MainActivity", TimeSpan.FromSeconds(5), default);
 
-            BtnInstallCompanion.Visibility = Visibility.Collapsed;
+            BtnInstallCompanion.IsVisible = false;
             ConnMessage.Text = "Ayn Thor Link instalado!\nPode desativar 'Depuracao sem fio' no Thor.";
         }
         else
@@ -160,9 +165,9 @@ public partial class MainWindow
         {
             System.IO.Path.Combine(AppContext.BaseDirectory, "assets", "ayn-thor-link.apk"),
             System.IO.Path.Combine(AppContext.BaseDirectory, "ayn-thor-link.apk"),
-            @"mobile\ayn-thor-link\release\ayn-thor-link.apk",
-            @"mobile\ayn-thor-link\app\build\outputs\apk\debug\app-debug.apk",
-            @"mobile\ayn-thor-link\app\build\outputs\apk\release\app-release.apk",
+            System.IO.Path.Combine("mobile", "ayn-thor-link", "release", "ayn-thor-link.apk"),
+            System.IO.Path.Combine("mobile", "ayn-thor-link", "app", "build", "outputs", "apk", "debug", "app-debug.apk"),
+            System.IO.Path.Combine("mobile", "ayn-thor-link", "app", "build", "outputs", "apk", "release", "app-release.apk"),
         };
 
         return candidates.FirstOrDefault(System.IO.File.Exists);

@@ -1,21 +1,34 @@
-using System.Windows;
+using System.Collections.ObjectModel;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using AynThorManager.Core.Models;
 
 namespace AynThorManager.Desktop;
 
 public partial class MainWindow
 {
+    private readonly ObservableCollection<FileItem> _files = new();
+    private bool _fileListBound;
+
+    private void EnsureFileListBound()
+    {
+        if (_fileListBound) return;
+        FileList.ItemsSource = _files;
+        _fileListBound = true;
+    }
+
     private async Task LoadDirectory()
     {
+        EnsureFileListBound();
         PathDisplay.Text = _currentPath;
-        FileList.Items.Clear();
+        _files.Clear();
 
         var result = await _fileService.ListDirectoryAsync(_currentPath, default);
         if (!result.IsSuccess) { ConnMessage.Text = result.Error!.Message; return; }
 
         foreach (var entry in result.Value!.Entries)
         {
-            FileList.Items.Add(new FileItem
+            _files.Add(new FileItem
             {
                 Icon = entry.Type == FileEntryType.Directory ? "📁" : "📄",
                 Name = entry.Name,
@@ -26,7 +39,7 @@ public partial class MainWindow
         }
     }
 
-    private async void FileList_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private async void FileList_DoubleTapped(object? sender, TappedEventArgs e)
     {
         if (FileList.SelectedItem is FileItem item && item.IsDirectory)
         {
@@ -35,7 +48,7 @@ public partial class MainWindow
         }
     }
 
-    private async void BtnUp_Click(object sender, RoutedEventArgs e)
+    private async void BtnUp_Click(object? sender, RoutedEventArgs e)
     {
         var parts = _currentPath.TrimEnd('/').Split('/');
         if (parts.Length > 2)
@@ -45,13 +58,14 @@ public partial class MainWindow
         }
     }
 
-    private async void BtnNewFolder_Click(object sender, RoutedEventArgs e)
+    private async void BtnNewFolder_Click(object? sender, RoutedEventArgs e)
     {
         var dialog = new InputDialog("Nome da nova pasta:");
-        if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.Result)) return;
+        var ok = await dialog.ShowDialog<bool>(this);
+        if (!ok || string.IsNullOrWhiteSpace(dialog.Result)) return;
 
         var result = await _fileService.CreateDirectoryAsync(_currentPath, dialog.Result, default);
         if (result.IsSuccess) await LoadDirectory();
-        else MessageBox.Show(result.Error!.Message, "Erro");
+        else ConnMessage.Text = result.Error!.Message;
     }
 }

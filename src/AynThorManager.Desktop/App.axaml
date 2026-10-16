@@ -1,0 +1,89 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="AynThorManager.Desktop.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.Styles>
+        <FluentTheme />
+
+        <!-- ===== BOTOES ===== -->
+        <!-- Base look: sem chrome, cantos arredondados, cursor de mao -->
+        <Style Selector="Button.btn">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Opacity" Value="0.85" />
+        </Style>
+        <Style Selector="Button.btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Opacity" Value="0.7" />
+        </Style>
+        <Style Selector="Button.btn:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Opacity" Value="0.4" />
+        </Style>
+
+        <!-- Default: azul escuro -->
+        <Style Selector="Button.default">
+            <Setter Property="Background" Value="#0f3460" />
+            <Setter Property="Foreground" Value="#e0e0e0" />
+        </Style>
+        <Style Selector="Button.default:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#0f3460" />
+            <Setter Property="Foreground" Value="#e0e0e0" />
+        </Style>
+
+        <!-- Primary: cyan (acao principal) -->
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#00d4ff" />
+            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#00d4ff" />
+            <Setter Property="Foreground" Value="Black" />
+        </Style>
+
+        <!-- Danger: vermelho (acao destrutiva/parar) -->
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#ff5252" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#ff5252" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <!-- ===== INPUTS ===== -->
+        <Style Selector="TextBox.input">
+            <Setter Property="Background" Value="#0e1a30" />
+            <Setter Property="Foreground" Value="#e0e0e0" />
+            <Setter Property="BorderBrush" Value="#0f3460" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="CornerRadius" Value="3" />
+        </Style>
+        <Style Selector="TextBox.input:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="#0e1a30" />
+            <Setter Property="BorderBrush" Value="#00d4ff" />
+        </Style>
+    </Application.Styles>
+
+    <Application.Resources>
+        <!-- ===== PALETA DE CORES ===== -->
+        <SolidColorBrush x:Key="BgDark" Color="#1a1a2e" />
+        <SolidColorBrush x:Key="BgPanel" Color="#16213e" />
+        <SolidColorBrush x:Key="Border" Color="#0f3460" />
+        <SolidColorBrush x:Key="Accent" Color="#00d4ff" />
+        <SolidColorBrush x:Key="TextPrimary" Color="#e0e0e0" />
+        <SolidColorBrush x:Key="TextSecondary" Color="#78909c" />
+        <SolidColorBrush x:Key="Success" Color="#00e676" />
+        <SolidColorBrush x:Key="Danger" Color="#ff5252" />
+        <SolidColorBrush x:Key="BtnHover" Color="#1a4a7a" />
+    </Application.Resources>
+</Application>

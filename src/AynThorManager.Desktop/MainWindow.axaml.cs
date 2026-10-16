@@ -1,10 +1,7 @@
-﻿using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
-using System.Windows;
-using System.Windows.Media;
+using Avalonia.Controls;
 using AynThorManager.Core.Interfaces;
-using AynThorManager.Core.Models;
+using AynThorManager.Desktop.Embedding;
 using AynThorManager.Infrastructure.Adb;
 using AynThorManager.Services.Adb;
 using AynThorManager.Services.FileStorage;
@@ -19,6 +16,7 @@ public partial class MainWindow : Window
     private readonly ICommandQueue _commandQueue;
     private readonly AdbConnectionService _connectionService;
     private readonly IFileStorageService _fileService;
+    private readonly IScreenEmbedder _embedder;
     private string _currentPath = "/storage/";
 
     public MainWindow()
@@ -31,9 +29,13 @@ public partial class MainWindow : Window
         _commandQueue = new CommandQueue(_executor, NullLogger<CommandQueue>.Instance);
         _connectionService = new AdbConnectionService(_commandQueue, NullLogger<AdbConnectionService>.Instance);
         _fileService = new FileStorageService(_commandQueue, _connectionService, NullLogger<FileStorageService>.Instance);
+
+        _embedder = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? new Win32ScreenEmbedder()
+            : new X11ScreenEmbedder();
     }
 
-    private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    private void MainWindow_Closing(object? sender, WindowClosingEventArgs e)
     {
         KillScrcpy();
     }
