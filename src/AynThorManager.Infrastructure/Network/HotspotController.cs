@@ -36,13 +36,30 @@ public sealed class HotspotController : IHotspotController
         if (password.Length < 8)
             return HotspotResult.Fail("A senha do hotspot precisa de ao menos 8 caracteres.");
 
+        // Force the 5 GHz band ("a"): less congested than 2.4 GHz and much better
+        // throughput/latency for screen mirroring over a direct link. If the adapter
+        // refuses 5 GHz, StartAsync falls back to the default band (see below).
         var result = await RunAsync("nmcli",
             new[] { "device", "wifi", "hotspot",
                     "ifname", _wifiInterface,
                     "con-name", _connectionName,
                     "ssid", ssid,
-                    "password", password },
+                    "password", password,
+                    "band", "a" },
             ct);
+
+        // Some drivers reject a forced 5 GHz AP; retry on the default band so the
+        // hotspot still comes up rather than failing outright.
+        if (result.ExitCode != 0)
+        {
+            result = await RunAsync("nmcli",
+                new[] { "device", "wifi", "hotspot",
+                        "ifname", _wifiInterface,
+                        "con-name", _connectionName,
+                        "ssid", ssid,
+                        "password", password },
+                ct);
+        }
 
         if (result.ExitCode != 0)
         {

@@ -17,9 +17,13 @@ public partial class MainWindow
         // scrcpy opens its own window. It is fast (hardware decode, low latency) and
         // manages the device encoder cleanly, which is why we let it own the window
         // instead of trying to embed or re-render the stream ourselves.
+        //
+        // Tuned for the dedicated hotspot link (device right next to the PC, no router):
+        // H.265 for better quality-per-bit, a high bitrate the direct link can carry,
+        // and zero video buffer to keep latency minimal.
         var args = $"-s {device.Serial} --keyboard=uhid --mouse=sdk --gamepad=uhid " +
-                   "--video-codec=h264 --video-bit-rate=8M --max-fps=60 --max-size=1080 " +
-                   "--no-audio --window-title=\"AYN Thor\"";
+                   "--video-codec=h265 --video-bit-rate=40M --max-fps=60 " +
+                   "--video-buffer=0 --no-audio --window-title=\"AYN Thor\"";
 
         try
         {
