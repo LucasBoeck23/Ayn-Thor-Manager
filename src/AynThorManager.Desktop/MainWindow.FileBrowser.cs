@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using AynThorManager.Core.Models;
 
 namespace AynThorManager.Desktop;
@@ -74,7 +75,80 @@ public partial class MainWindow
         else ConnMessage.Text = result.Error!.Message;
     }
 
+    private async void BtnNewFile_Click(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new InputDialog("Nome do novo documento:", "novo.txt");
+        var ok = await dialog.ShowDialog<bool>(this);
+        if (!ok || string.IsNullOrWhiteSpace(dialog.Result)) return;
+
+        var result = await _fileService.CreateFileAsync(_currentPath, dialog.Result, default);
+        if (result.IsSuccess) await LoadDirectory();
+        else ConnMessage.Text = result.Error!.Message;
+    }
+
+    private async void BtnUpload_Click(object? sender, RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Enviar para o Thor",
+            AllowMultiple = true,
+        });
+
+        var paths = files
+            .Select(f => f.TryGetLocalPath())
+            .Where(p => !string.IsNullOrEmpty(p))
+            .Cast<string>()
+            .ToList();
+
+        await UploadFilesAsync(paths);
+    }
+
     private async void BtnRefresh_Click(object? sender, RoutedEventArgs e) => await LoadDirectory();
+
+    /// <summary>Pushes the given local files into the current directory, one by one.</summary>
+    private async Task UploadFilesAsync(IReadOnlyList<string> localPaths)
+    {
+        if (localPaths.Count == 0) return;
+
+        var done = 0;
+        foreach (var local in localPaths)
+        {
+            ConnMessage.Text = $"Enviando {System.IO.Path.GetFileName(local)} ({++done}/{localPaths.Count})...";
+            var result = await _fileService.UploadFileAsync(local, _currentPath, default);
+            if (!result.IsSuccess)
+            {
+                ConnMessage.Text = $"Falha ao enviar {System.IO.Path.GetFileName(local)}: {result.Error!.Message}";
+                break;
+            }
+        }
+
+        ConnMessage.Text = done == localPaths.Count ? $"{done} arquivo(s) enviado(s)." : ConnMessage.Text;
+        await LoadDirectory();
+    }
+
+    /// <summary>Wires drag-and-drop upload onto the file list. Called once at startup.</summary>
+    private void SetupFileDragDrop()
+    {
+        FileList.AddHandler(DragDrop.DragOverEvent, (_, e) =>
+        {
+            e.DragEffects = e.Data.Contains(DataFormats.Files)
+                ? DragDropEffects.Copy
+                : DragDropEffects.None;
+        });
+
+        FileList.AddHandler(DragDrop.DropEvent, async (_, e) =>
+        {
+            if (!e.Data.Contains(DataFormats.Files)) return;
+
+            var paths = (e.Data.GetFiles() ?? [])
+                .Select(f => f.TryGetLocalPath())
+                .Where(p => !string.IsNullOrEmpty(p) && System.IO.File.Exists(p))
+                .Cast<string>()
+                .ToList();
+
+            await UploadFilesAsync(paths);
+        });
+    }
 
     private async void BtnRename_Click(object? sender, RoutedEventArgs e)
     {

@@ -84,20 +84,29 @@
                                 </Border>
                                 <Button Grid.Column="2" Content="⟳" Click="BtnRefresh_Click" Classes="btn icon"
                                         Margin="0,0,4,0" ToolTip.Tip="Atualizar" />
-                                <Button Grid.Column="3" Content="＋" Click="BtnNewFolder_Click" Classes="btn primary icon"
-                                        ToolTip.Tip="Nova pasta" />
+                                <Button Grid.Column="3" Content="＋" Classes="btn primary icon" ToolTip.Tip="Adicionar">
+                                    <Button.Flyout>
+                                        <MenuFlyout>
+                                            <MenuItem Header="📁 Nova pasta" Click="BtnNewFolder_Click" />
+                                            <MenuItem Header="📄 Novo documento" Click="BtnNewFile_Click" />
+                                            <MenuItem Header="⬆️ Enviar arquivo..." Click="BtnUpload_Click" />
+                                        </MenuFlyout>
+                                    </Button.Flyout>
+                                </Button>
                             </Grid>
                         </StackPanel>
                     </Border>
 
                     <!-- Dica de pasta vazia -->
-                    <TextBlock x:Name="EmptyHint" DockPanel.Dock="Top" Text="Pasta vazia"
-                               Foreground="#546e7a" FontSize="12" FontStyle="Italic"
+                    <TextBlock x:Name="EmptyHint" DockPanel.Dock="Top"
+                               Text="Pasta vazia&#x0a;Arraste arquivos aqui para enviar"
+                               Foreground="#546e7a" FontSize="12" FontStyle="Italic" TextAlignment="Center"
                                HorizontalAlignment="Center" Margin="0,24,0,0" IsVisible="False" />
 
-                    <!-- Lista de arquivos -->
+                    <!-- Lista de arquivos (aceita arrastar-e-soltar para upload) -->
                     <ListBox x:Name="FileList" Classes="files" Background="Transparent" BorderThickness="0"
                              Foreground="#e0e0e0" FontSize="12"
+                             DragDrop.AllowDrop="True"
                              DoubleTapped="FileList_DoubleTapped">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="local:FileItem">

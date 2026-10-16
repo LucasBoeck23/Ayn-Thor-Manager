@@ -74,6 +74,71 @@ public sealed class FileStorageService(
         return Result<CreateDirectoryResponse>.Success(new CreateDirectoryResponse(fullPath));
     }
 
+    public async Task<Result<CreateFileResponse>> CreateFileAsync(string parentPath, string name, CancellationToken ct)
+    {
+        var nameValidation = FileNameValidator.Validate(name);
+        if (!nameValidation.IsSuccess)
+            return Result<CreateFileResponse>.Failure(nameValidation.Error!);
+
+        var preCheck = ValidatePathAndConnection(parentPath);
+        if (preCheck is not null)
+            return Result<CreateFileResponse>.Failure(preCheck);
+
+        var fullPathValidation = PathValidator.ValidateFullPathLength(parentPath, name);
+        if (!fullPathValidation.IsSuccess)
+            return Result<CreateFileResponse>.Failure(fullPathValidation.Error!);
+
+        var fullPath = PathHelper.Combine(parentPath, name);
+        var command = new AdbCommand($"shell touch \"{fullPath}\"", CreateDirectoryTimeout, $"touch {fullPath}");
+        var result = await ExecuteAndParseAsync(command, parentPath, ct);
+
+        if (!result.IsSuccess)
+            return Result<CreateFileResponse>.Failure(result.Error!);
+
+        logger.LogInformation("File created: {FullPath}", fullPath);
+        return Result<CreateFileResponse>.Success(new CreateFileResponse(fullPath));
+    }
+
+    public async Task<Result<UploadFileResponse>> UploadFileAsync(string localFilePath, string destinationPath, CancellationToken ct)
+    {
+        if (!File.Exists(localFilePath))
+            return Result<UploadFileResponse>.Failure(new Error("LOCAL_FILE_NOT_FOUND", "O arquivo local não foi encontrado."));
+
+        var preCheck = ValidatePathAndConnection(destinationPath);
+        if (preCheck is not null)
+            return Result<UploadFileResponse>.Failure(preCheck);
+
+        var fileName = Path.GetFileName(localFilePath);
+        var fullPath = PathHelper.Combine(destinationPath, fileName);
+
+        // `adb push` is a direct adb command (not a shell command). The timeout
+        // scales with file size so large uploads are not cut off mid-transfer.
+        var timeout = TimeoutForFile(localFilePath);
+        var command = new AdbCommand($"push \"{localFilePath}\" \"{fullPath}\"", timeout, $"push {fileName}");
+        var result = await ExecuteAndParseAsync(command, destinationPath, ct);
+
+        if (!result.IsSuccess)
+            return Result<UploadFileResponse>.Failure(result.Error!);
+
+        logger.LogInformation("Uploaded '{Local}' to '{FullPath}'", localFilePath, fullPath);
+        return Result<UploadFileResponse>.Success(new UploadFileResponse(fullPath));
+    }
+
+    private static TimeSpan TimeoutForFile(string localFilePath)
+    {
+        // Allow ~1 minute per 100 MB (min 1 min), a generous floor for slow links.
+        try
+        {
+            var sizeMb = new FileInfo(localFilePath).Length / (1024.0 * 1024.0);
+            var minutes = Math.Max(1, (int)Math.Ceiling(sizeMb / 100.0));
+            return TimeSpan.FromMinutes(minutes);
+        }
+        catch
+        {
+            return TimeSpan.FromMinutes(5);
+        }
+    }
+
     public async Task<Result<RenameResponse>> RenameAsync(string currentPath, string newName, CancellationToken ct)
     {
         var nameValidation = FileNameValidator.Validate(newName);

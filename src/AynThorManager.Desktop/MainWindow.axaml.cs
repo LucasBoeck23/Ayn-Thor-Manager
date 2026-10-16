@@ -31,6 +31,8 @@ public partial class MainWindow : Window
         _device = new DeviceConnection(queue, NullLogger<DeviceConnection>.Instance);
         _device.StateChanged += device => Dispatcher.UIThread.Post(() => OnDeviceChanged(device));
         _fileService = new FileStorageService(_device, NullLogger<FileStorageService>.Instance);
+
+        SetupFileDragDrop();
     }
 
     private async void MainWindow_Closing(object? sender, WindowClosingEventArgs e)
@@ -68,7 +70,7 @@ public class FileItem
         return ext switch
         {
             ".apk" or ".xapk" => "📦",
-            ".zip" or ".rar" or ".7z" or ".gz" or ".tar" => "🗜️",
+            ".zip" or ".rar" or ".7z" or ".gz" or ".tar" => "🗂️",
             ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".bmp" => "🖼️",
             ".mp4" or ".mkv" or ".avi" or ".mov" or ".webm" => "🎬",
             ".mp3" or ".wav" or ".flac" or ".ogg" or ".m4a" => "🎵",

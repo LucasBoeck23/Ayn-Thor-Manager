@@ -9,6 +9,12 @@ public interface IFileStorageService
 
     Task<Result<CreateDirectoryResponse>> CreateDirectoryAsync(string parentPath, string name, CancellationToken ct);
 
+    /// <summary>Creates an empty file in <paramref name="parentPath"/>.</summary>
+    Task<Result<CreateFileResponse>> CreateFileAsync(string parentPath, string name, CancellationToken ct);
+
+    /// <summary>Uploads a local file into <paramref name="destinationPath"/> on the device.</summary>
+    Task<Result<UploadFileResponse>> UploadFileAsync(string localFilePath, string destinationPath, CancellationToken ct);
+
     Task<Result<RenameResponse>> RenameAsync(string currentPath, string newName, CancellationToken ct);
 
     Task<Result<DeleteResponse>> DeleteAsync(string path, CancellationToken ct);
