@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using AynThorManager.Core.Helpers;
 using AynThorManager.Core.Models;
 
 namespace AynThorManager.Desktop;
@@ -38,7 +39,7 @@ public partial class MainWindow
                 Size = isDir ? "" : FormatSize(entry.SizeBytes),
                 Modified = FormatDate(entry.ModifiedAt),
                 IsDirectory = isDir,
-                FullPath = _currentPath + entry.Name
+                FullPath = PathHelper.Combine(_currentPath, entry.Name)
             });
         }
 
@@ -56,12 +57,12 @@ public partial class MainWindow
 
     private async void BtnUp_Click(object? sender, RoutedEventArgs e)
     {
-        var parts = _currentPath.TrimEnd('/').Split('/');
-        if (parts.Length > 2)
-        {
-            _currentPath = string.Join("/", parts[..^1]) + "/";
-            await LoadDirectory();
-        }
+        if (_currentPath.TrimEnd('/').Split('/').Length <= 2)
+            return; // already at a top-level dir (e.g. /storage/)
+
+        var parent = PathHelper.GetParentPath(_currentPath);
+        _currentPath = parent.EndsWith('/') ? parent : parent + "/";
+        await LoadDirectory();
     }
 
     private async void BtnNewFolder_Click(object? sender, RoutedEventArgs e)
