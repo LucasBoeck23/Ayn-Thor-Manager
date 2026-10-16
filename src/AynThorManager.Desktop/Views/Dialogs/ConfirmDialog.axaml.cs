@@ -6,7 +6,6 @@ namespace AynThorManager.Desktop;
 
 public partial class ConfirmDialog : Window
 {
-    // Parameterless ctor required by the Avalonia XAML tooling.
     public ConfirmDialog() : this("Confirmar", "") { }
 
     public ConfirmDialog(string title, string message)

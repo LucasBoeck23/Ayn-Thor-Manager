@@ -69,7 +69,6 @@ public sealed class AdbCommandExecutor(
         }
     }
 
-    /// <summary>Builds a failed <see cref="CommandResult"/> with empty output and the elapsed time.</summary>
     private static CommandResult Failure(Stopwatch stopwatch, string standardError, int exitCode)
     {
         stopwatch.Stop();

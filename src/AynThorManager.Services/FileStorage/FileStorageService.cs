@@ -98,7 +98,6 @@ public sealed class FileStorageService(
 
     private static TimeSpan TimeoutForFile(string localFilePath)
     {
-        // Allow ~1 minute per 100 MB (min 1 min), a generous floor for slow links.
         try
         {
             var sizeMb = new FileInfo(localFilePath).Length / (1024.0 * 1024.0);

@@ -4,11 +4,6 @@ using AynThorManager.Services.Connection;
 
 namespace AynThorManager.Desktop;
 
-/// <summary>
-/// Shared connection UI helpers. The only way to connect is the direct hotspot
-/// flow (see MainWindow.DirectConnect.cs); this file keeps the result rendering
-/// and the status header in sync, plus the shared brushes used across the UI.
-/// </summary>
 public partial class MainWindow
 {
     private static readonly IBrush SuccessBrush = SolidColorBrush.Parse("#00e676");

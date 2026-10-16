@@ -24,28 +24,22 @@ internal static class LsOutputParser
     {
         var trimmed = line.Trim();
 
-        // Skip blank/short lines and the "total NN" header ls prints first.
         if (trimmed.Length < 10 || trimmed.StartsWith("total", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        // First char is the entry type: d=dir, -=file, l=symlink. Anything else
-        // is not a listing row.
         var typeChar = trimmed[0];
         if (typeChar is not ('d' or '-' or 'l'))
             return null;
 
-        // A valid `ls -la` row has at least 8 columns (perms..name).
         var parts = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 8)
             return null;
 
         var name = string.Join(' ', parts[7..]);
 
-        // Current/parent dir entries are not shown in the UI.
         if (name is "." or "..")
             return null;
 
-        // Symlinks are listed as "name -> target"; keep only the link name.
         if (typeChar == 'l')
         {
             var arrowIndex = name.IndexOf(" -> ", StringComparison.Ordinal);

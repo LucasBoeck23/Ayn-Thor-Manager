@@ -6,8 +6,6 @@
     <Application.Styles>
         <FluentTheme />
 
-        <!-- ===== BOTOES ===== -->
-        <!-- Base look: sem chrome, cantos arredondados, cursor de mao -->
         <Style Selector="Button.btn">
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="10,6" />
@@ -27,7 +25,6 @@
             <Setter Property="Opacity" Value="0.4" />
         </Style>
 
-        <!-- Default: azul escuro -->
         <Style Selector="Button.default">
             <Setter Property="Background" Value="#0f3460" />
             <Setter Property="Foreground" Value="#e0e0e0" />
@@ -37,7 +34,6 @@
             <Setter Property="Foreground" Value="#e0e0e0" />
         </Style>
 
-        <!-- Primary: cyan (acao principal) -->
         <Style Selector="Button.primary">
             <Setter Property="Background" Value="#00d4ff" />
             <Setter Property="Foreground" Value="Black" />
@@ -48,7 +44,6 @@
             <Setter Property="Foreground" Value="Black" />
         </Style>
 
-        <!-- Danger: vermelho (acao destrutiva/parar) -->
         <Style Selector="Button.danger">
             <Setter Property="Background" Value="#ff5252" />
             <Setter Property="Foreground" Value="White" />
@@ -58,7 +53,6 @@
             <Setter Property="Foreground" Value="White" />
         </Style>
 
-        <!-- Icon: botao quadrado compacto (barra de ferramentas) -->
         <Style Selector="Button.icon">
             <Setter Property="Width" Value="30" />
             <Setter Property="Height" Value="30" />
@@ -66,7 +60,6 @@
             <Setter Property="FontSize" Value="14" />
         </Style>
 
-        <!-- ===== LISTA DE ARQUIVOS ===== -->
         <Style Selector="ListBox.files ListBoxItem">
             <Setter Property="Padding" Value="6,2" />
             <Setter Property="CornerRadius" Value="3" />
@@ -79,7 +72,6 @@
             <Setter Property="Background" Value="#0f3460" />
         </Style>
 
-        <!-- ===== INPUTS ===== -->
         <Style Selector="TextBox.input">
             <Setter Property="Background" Value="#0e1a30" />
             <Setter Property="Foreground" Value="#e0e0e0" />
@@ -96,7 +88,7 @@
     </Application.Styles>
 
     <Application.Resources>
-        <!-- ===== PALETA DE CORES ===== -->
+        
         <SolidColorBrush x:Key="BgDark" Color="#1a1a2e" />
         <SolidColorBrush x:Key="BgPanel" Color="#16213e" />
         <SolidColorBrush x:Key="Border" Color="#0f3460" />

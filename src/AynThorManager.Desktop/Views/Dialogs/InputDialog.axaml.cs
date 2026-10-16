@@ -9,7 +9,6 @@ public partial class InputDialog : Window
 {
     public string Result => InputBox.Text?.Trim() ?? string.Empty;
 
-    // Parameterless ctor required by the Avalonia XAML tooling.
     public InputDialog() : this("") { }
 
     public InputDialog(string prompt, string initialValue = "")
@@ -27,7 +26,7 @@ public partial class InputDialog : Window
         Opened += (_, _) => Dispatcher.UIThread.Post(() =>
         {
             InputBox.Focus();
-            InputBox.SelectAll(); // so renaming pre-selects the current name
+            InputBox.SelectAll(); 
         });
     }
 

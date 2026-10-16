@@ -8,10 +8,8 @@
 
     <Grid ColumnDefinitions="350,*">
 
-        <!-- Painel esquerdo: Conexao + Navegador de arquivos -->
         <Border Grid.Column="0" Background="#16213e" BorderBrush="#0f3460" BorderThickness="0,0,1,0">
             <DockPanel>
-                <!-- Header -->
                 <Border DockPanel.Dock="Top" Padding="12" BorderBrush="#0f3460" BorderThickness="0,0,0,1">
                     <StackPanel>
                         <TextBlock Text="Ayn Thor Manager" FontSize="16" FontWeight="Bold" Foreground="#00d4ff" />
@@ -22,12 +20,10 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Conexao -->
                 <Border DockPanel.Dock="Top" Padding="12" BorderBrush="#0f3460" BorderThickness="0,0,0,1">
                     <StackPanel>
                         <TextBlock Text="Conexao" FontSize="11" Foreground="#78909c" Margin="0,0,0,6" />
 
-                        <!-- Conexao direta: PC vira hotspot, Thor conecta nele (rede dedicada) -->
                         <Button x:Name="BtnDirectConnect" Content="📡 Conectar (Hotspot)"
                                 Click="BtnDirectConnect_Click"
                                 Classes="btn primary" HorizontalAlignment="Stretch" />
@@ -44,9 +40,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Navegador de arquivos -->
                 <DockPanel>
-                    <!-- Stats de rede -->
                     <Border DockPanel.Dock="Top" x:Name="NetStatsPanel" Padding="8,6"
                             BorderBrush="#0f3460" BorderThickness="0,0,0,1" IsVisible="False">
                         <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
@@ -70,7 +64,6 @@
                         </Grid>
                     </Border>
 
-                    <!-- Barra de caminho + acoes -->
                     <Border DockPanel.Dock="Top" Padding="8" BorderBrush="#0f3460" BorderThickness="0,0,0,1">
                         <StackPanel Spacing="8">
                             <Grid ColumnDefinitions="Auto,*,Auto,Auto">
@@ -97,13 +90,11 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Dica de pasta vazia -->
                     <TextBlock x:Name="EmptyHint" DockPanel.Dock="Top"
                                Text="Pasta vazia&#x0a;Arraste arquivos aqui para enviar"
                                Foreground="#546e7a" FontSize="12" FontStyle="Italic" TextAlignment="Center"
                                HorizontalAlignment="Center" Margin="0,24,0,0" IsVisible="False" />
 
-                    <!-- Lista de arquivos (aceita arrastar-e-soltar para upload) -->
                     <ListBox x:Name="FileList" Classes="files" Background="Transparent" BorderThickness="0"
                              Foreground="#e0e0e0" FontSize="12"
                              DragDrop.AllowDrop="True"
@@ -122,7 +113,6 @@
                                     <TextBlock Grid.Column="2" Text="{Binding Size}" Margin="8,0,4,0"
                                                Foreground="#78909c" FontSize="10" VerticalAlignment="Center" />
 
-                                    <!-- Menu de contexto: renomear / excluir -->
                                     <Grid.ContextMenu>
                                         <ContextMenu>
                                             <MenuItem Header="✏️ Renomear" Click="BtnRename_Click" />
@@ -137,9 +127,7 @@
             </DockPanel>
         </Border>
 
-        <!-- Painel direito: scrcpy embutido -->
         <DockPanel Grid.Column="1">
-            <!-- Toolbar do stream -->
             <Border DockPanel.Dock="Top" Padding="12" Background="#16213e" BorderBrush="#0f3460" BorderThickness="0,0,0,1">
                 <StackPanel Orientation="Horizontal">
                     <Button x:Name="BtnStream" Content="Espelhar Tela" Click="BtnStream_Click" Classes="btn primary" Margin="0,0,8,0" />
@@ -148,7 +136,6 @@
                 </StackPanel>
             </Border>
 
-            <!-- O espelhamento abre em uma janela própria do scrcpy. -->
             <Border Background="Black">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
                     <TextBlock Text="📱" FontSize="48" HorizontalAlignment="Center" Opacity="0.5" />

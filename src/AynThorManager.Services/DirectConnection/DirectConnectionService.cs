@@ -8,7 +8,6 @@ public sealed class DirectConnectionService(
     IHotspotController hotspot,
     ILogger<DirectConnectionService> logger)
 {
-    /// <summary>Starts the hotspot. Returns the error text on failure.</summary>
     public async Task<HotspotResult> StartHotspotAsync(string ssid, string password, CancellationToken ct)
     {
         logger.LogInformation("Starting direct-connection hotspot {Ssid}", ssid);
@@ -23,7 +22,6 @@ public sealed class DirectConnectionService(
 
     public async Task<string?> WaitForDeviceAsync(TimeSpan timeout, CancellationToken ct)
     {
-        // Snapshot who is already present so we only report the newcomer.
         var known = (await hotspot.ListClientsAsync(ct))
             .Select(c => c.MacAddress)
             .ToHashSet();

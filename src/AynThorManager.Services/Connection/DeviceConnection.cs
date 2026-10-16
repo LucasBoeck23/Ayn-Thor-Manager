@@ -5,11 +5,6 @@ using Microsoft.Extensions.Logging;
 
 namespace AynThorManager.Services.Connection;
 
-/// <summary>
-/// Single entry point for everything related to the device connection.
-/// It owns which device is in use and is the only component that builds adb
-/// commands targeting it, so every command carries the right <c>-s serial</c>.
-/// </summary>
 public sealed class DeviceConnection(
     ICommandQueue queue,
     ILogger<DeviceConnection> logger,
@@ -25,22 +20,18 @@ public sealed class DeviceConnection(
     private readonly object _lock = new();
     private ThorDevice? _current;
 
-    /// <summary>Device in use, or null when disconnected.</summary>
     public ThorDevice? Current { get { lock (_lock) return _current; } }
 
     public bool IsConnected => Current is not null;
 
-    /// <summary>Raised on connect, device switch and connection loss (argument is null).</summary>
     public event Action<ThorDevice?>? StateChanged;
 
-    /// <summary>Devices adb currently knows about, with their state (used to confirm a connect).</summary>
     private async Task<IReadOnlyList<AdbDeviceEntry>> ListDevicesAsync(CancellationToken ct)
     {
         var result = await RawAsync("devices -l", QuickTimeout, ct);
         return result.IsSuccess ? AdbOutputParser.ParseDevices(result.Value!.StandardOutput) : [];
     }
 
-    /// <summary>Wi-Fi connection to <c>ip:port</c> (the hotspot-discovered endpoint).</summary>
     public async Task<Result<ThorDevice>> ConnectAsync(string address, CancellationToken ct)
     {
         var target = (address ?? "").Trim();
@@ -71,8 +62,6 @@ public sealed class DeviceConnection(
             || output.Contains("failed to connect", StringComparison.OrdinalIgnoreCase))
             return Fail("CONNECTION_FAILED", $"Não foi possível conectar em {target}: {output}");
 
-        // The text and exit code of `adb connect` are unreliable (it prints "already
-        // connected" for dead endpoints), so only trust what `adb devices` reports.
         AdbDeviceEntry? entry = null;
         for (var attempt = 0; attempt < ReadyPollAttempts; attempt++)
         {
@@ -93,10 +82,6 @@ public sealed class DeviceConnection(
         return Fail("CONNECTION_FAILED", $"Não foi possível conectar em {target}. Confira o IP e a porta em 'Depuração sem fio' no Thor.");
     }
 
-    /// <summary>
-    /// Runs an adb command against the current device. If adb reports the device is
-    /// gone, the connection state is cleared so the UI reflects it.
-    /// </summary>
     public async Task<Result<CommandResult>> RunAsync(string arguments, TimeSpan timeout, CancellationToken ct)
     {
         var device = Current;
@@ -115,7 +100,6 @@ public sealed class DeviceConnection(
         return result;
     }
 
-    /// <summary>AdbCommandExecutor reports its own timeout as exit code -1 with this message.</summary>
     private static bool IsExecutorTimeout(CommandResult result) =>
         result.ExitCode == -1 && result.StandardError.StartsWith("Command timed out", StringComparison.Ordinal);
 

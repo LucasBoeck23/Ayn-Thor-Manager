@@ -12,8 +12,8 @@ public partial class MainWindow
 
     private DirectConnectionService? _directService;
     private bool _directActive;
-    private string? _directIp;      // last IP discovered on the hotspot (for retry)
-    private bool _directBusy;       // a discovery/scan pass is running
+    private string? _directIp;      
+    private bool _directBusy;       
 
     private async void BtnDirectConnect_Click(object? sender, RoutedEventArgs e)
     {
@@ -47,7 +47,6 @@ public partial class MainWindow
             BtnDirectStop.IsVisible = true;
             ShowDirect($"Hotspot ativo.\nNo Thor, conecte no Wi-Fi \"{DirectSsid}\" (senha: {DirectPassword}) e ative a Depuração sem fio.\nAguardando o Thor entrar...");
 
-            // Wait for the Thor to join and get an IP on the dedicated network.
             var ip = await _directService.WaitForDeviceAsync(TimeSpan.FromSeconds(90), default);
             if (ip is null)
             {
@@ -91,7 +90,7 @@ public partial class MainWindow
             {
                 ShowDirect($"Thor em {ip}, mas não achei a porta do ADB ainda.\n" +
                            "Confirme que a 'Depuração sem fio' está ativa no Thor e toque em Tentar de novo.");
-                BtnDirectRetry.IsVisible = true; // let the user re-scan once the port is up
+                BtnDirectRetry.IsVisible = true; 
             }
         }
         catch (Exception ex)
@@ -116,7 +115,7 @@ public partial class MainWindow
     {
         if (_directService is not null)
         {
-            try { await _directService.StopHotspotAsync(default); } catch { /* best effort */ }
+            try { await _directService.StopHotspotAsync(default); } catch {  }
             _directService = null;
         }
 

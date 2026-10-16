@@ -12,7 +12,7 @@ public partial class MainWindow
     {
         var device = _device.Current;
         if (device is null) { ConnMessage.Text = "Conecte primeiro"; return; }
-        if (_scrcpyProcess is { HasExited: false }) return; // already mirroring
+        if (_scrcpyProcess is { HasExited: false }) return; 
 
         var args = $"-s {device.Serial} --keyboard=uhid --mouse=sdk --gamepad=uhid " +
                    "--video-codec=h265 --video-bit-rate=12M --max-fps=60 " +
@@ -47,7 +47,6 @@ public partial class MainWindow
 
     private void OnScrcpyExited()
     {
-        // scrcpy ended on its own (window closed, device dropped). Reset the UI.
         if (BtnStopStream.IsVisible)
             StopStreaming();
     }
@@ -61,7 +60,7 @@ public partial class MainWindow
         if (process is not null)
         {
             try { if (!process.HasExited) process.Kill(true); }
-            catch (InvalidOperationException) { /* already gone */ }
+            catch (InvalidOperationException) {  }
             finally { process.Dispose(); }
         }
 
@@ -71,7 +70,6 @@ public partial class MainWindow
         StreamStatus.Foreground = SecondaryBrush;
     }
 
-    // Called on window close.
     private Task StopStreamingAsync()
     {
         StopStreaming();

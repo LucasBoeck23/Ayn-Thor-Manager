@@ -11,7 +11,7 @@ public partial class MainWindow
 
     private void StartNetStats()
     {
-        _netStatsTimer?.Stop(); // switching device must not leave two timers running
+        _netStatsTimer?.Stop(); 
         NetStatsPanel.IsVisible = true;
         _netStatsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _netStatsTimer.Tick += async (_, _) => await UpdateNetStats();

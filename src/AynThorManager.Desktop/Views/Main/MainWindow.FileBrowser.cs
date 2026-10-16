@@ -105,7 +105,6 @@ public partial class MainWindow
 
     private async void BtnRefresh_Click(object? sender, RoutedEventArgs e) => await LoadDirectory();
 
-    /// <summary>Pushes the given local files into the current directory, one by one.</summary>
     private async Task UploadFilesAsync(IReadOnlyList<string> localPaths)
     {
         if (localPaths.Count == 0) return;
@@ -126,7 +125,6 @@ public partial class MainWindow
         await LoadDirectory();
     }
 
-    /// <summary>Wires drag-and-drop upload onto the file list. Called once at startup.</summary>
     private void SetupFileDragDrop()
     {
         FileList.AddHandler(DragDrop.DragOverEvent, (_, e) =>
@@ -180,10 +178,6 @@ public partial class MainWindow
         else ConnMessage.Text = result.Error!.Message;
     }
 
-    /// <summary>
-    /// Resolves the file item a context-menu/action click targets: the item bound
-    /// to the clicked control, falling back to the current list selection.
-    /// </summary>
     private FileItem? SelectedFile(object? sender) =>
         (sender as Control)?.DataContext as FileItem
         ?? FileList.SelectedItem as FileItem;
