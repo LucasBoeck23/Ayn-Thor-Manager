@@ -8,27 +8,23 @@ public static class AdbErrorParser
     {
         var combined = $"{standardError} {standardOutput}".ToLowerInvariant();
 
-        if (combined.Contains("no such file or directory"))
+        switch (combined)
         {
-            var message = contextPath is not null
-                ? $"O caminho não foi encontrado: {contextPath}"
-                : "O caminho não foi encontrado.";
-            return new Error("PATH_NOT_FOUND", message);
-        }
+            case var c when c.Contains("no such file or directory"):
+                return new Error("PATH_NOT_FOUND", contextPath is not null
+                    ? $"O caminho não foi encontrado: {contextPath}"
+                    : "O caminho não foi encontrado.");
 
-        if (combined.Contains("permission denied") || combined.Contains("read-only file system"))
-        {
-            var message = contextPath is not null
-                ? $"Permissão negada: {contextPath}"
-                : "Permissão negada.";
-            return new Error("PERMISSION_DENIED", message);
-        }
+            case var c when c.Contains("permission denied") || c.Contains("read-only file system"):
+                return new Error("PERMISSION_DENIED", contextPath is not null
+                    ? $"Permissão negada: {contextPath}"
+                    : "Permissão negada.");
 
-        if (combined.Contains("file exists") || combined.Contains("already exists") || combined.Contains("cannot move"))
-        {
-            return new Error("NAME_ALREADY_EXISTS", "Já existe um item com esse nome no diretório.");
-        }
+            case var c when c.Contains("file exists") || c.Contains("already exists") || c.Contains("cannot move"):
+                return new Error("NAME_ALREADY_EXISTS", "Já existe um item com esse nome no diretório.");
 
-        return null;
+            default:
+                return null;
+        }
     }
 }

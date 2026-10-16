@@ -4,7 +4,6 @@ using Avalonia.Interactivity;
 
 namespace AynThorManager.Desktop;
 
-/// <summary>Yes/No confirmation dialog, returning true when the user confirms.</summary>
 public partial class ConfirmDialog : Window
 {
     // Parameterless ctor required by the Avalonia XAML tooling.

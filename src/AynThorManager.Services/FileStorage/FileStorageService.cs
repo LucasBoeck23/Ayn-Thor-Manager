@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using AynThorManager.Core.Helpers;
+﻿using AynThorManager.Core.Helpers;
 using AynThorManager.Core.Interfaces;
 using AynThorManager.Core.Models;
 using AynThorManager.Core.Models.Responses;
@@ -27,76 +26,53 @@ public sealed class FileStorageService(
             return Result<ListDirectoryResponse>.Failure(preCheck);
 
         var command = new AdbCommand($"shell ls -la {path}", ListDirectoryTimeout, $"ls -la {path}");
-        var result = await ExecuteAndParseAsync(command, path, ct);
+        return await RunFileOpAsync(path, command, commandResult =>
+        {
+            var sorted = LsOutputParser.Parse(commandResult.StandardOutput)
+                .OrderBy(e => e.Type == FileEntryType.Directory ? 0 : 1)
+                .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-        if (!result.IsSuccess)
-            return Result<ListDirectoryResponse>.Failure(result.Error!);
+            var totalCount = sorted.Count;
+            var isTruncated = totalCount > MaxEntries;
+            var truncated = isTruncated ? sorted.Take(MaxEntries).ToList() : sorted;
 
-        var commandResult = result.Value!;
-
-        var entries = ParseLsOutput(commandResult.StandardOutput);
-
-        var sorted = entries
-            .OrderBy(e => e.Type == FileEntryType.Directory ? 0 : 1)
-            .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var totalCount = sorted.Count;
-        var isTruncated = totalCount > MaxEntries;
-        var truncated = isTruncated ? sorted.Take(MaxEntries).ToList() : sorted;
-
-        logger.LogInformation("Listed {TotalCount} entries in '{Path}' (truncated: {IsTruncated})", totalCount, path, isTruncated);
-        return Result<ListDirectoryResponse>.Success(new ListDirectoryResponse(truncated, path, isTruncated, totalCount));
+            logger.LogInformation("Listed {TotalCount} entries in '{Path}' (truncated: {IsTruncated})", totalCount, path, isTruncated);
+            return new ListDirectoryResponse(truncated, path, isTruncated, totalCount);
+        }, ct);
     }
 
-    public async Task<Result<CreateDirectoryResponse>> CreateDirectoryAsync(string parentPath, string name, CancellationToken ct)
+    public Task<Result<CreateDirectoryResponse>> CreateDirectoryAsync(string parentPath, string name, CancellationToken ct) =>
+        CreateEntryAsync(parentPath, name, "mkdir", "Directory created: {FullPath}",
+            fullPath => new CreateDirectoryResponse(fullPath), ct);
+
+    public Task<Result<CreateFileResponse>> CreateFileAsync(string parentPath, string name, CancellationToken ct) =>
+        CreateEntryAsync(parentPath, name, "touch", "File created: {FullPath}",
+            fullPath => new CreateFileResponse(fullPath), ct);
+
+    private async Task<Result<T>> CreateEntryAsync<T>(
+        string parentPath, string name, string shellVerb, string successLog,
+        Func<string, T> toResponse, CancellationToken ct)
     {
         var nameValidation = FileNameValidator.Validate(name);
         if (!nameValidation.IsSuccess)
-            return Result<CreateDirectoryResponse>.Failure(nameValidation.Error!);
+            return Result<T>.Failure(nameValidation.Error!);
 
         var preCheck = ValidatePathAndConnection(parentPath);
         if (preCheck is not null)
-            return Result<CreateDirectoryResponse>.Failure(preCheck);
+            return Result<T>.Failure(preCheck);
 
         var fullPathValidation = PathValidator.ValidateFullPathLength(parentPath, name);
         if (!fullPathValidation.IsSuccess)
-            return Result<CreateDirectoryResponse>.Failure(fullPathValidation.Error!);
+            return Result<T>.Failure(fullPathValidation.Error!);
 
         var fullPath = PathHelper.Combine(parentPath, name);
-        var command = new AdbCommand($"shell mkdir \"{fullPath}\"", CreateDirectoryTimeout, $"mkdir {fullPath}");
-        var result = await ExecuteAndParseAsync(command, parentPath, ct);
-
-        if (!result.IsSuccess)
-            return Result<CreateDirectoryResponse>.Failure(result.Error!);
-
-        logger.LogInformation("Directory created: {FullPath}", fullPath);
-        return Result<CreateDirectoryResponse>.Success(new CreateDirectoryResponse(fullPath));
-    }
-
-    public async Task<Result<CreateFileResponse>> CreateFileAsync(string parentPath, string name, CancellationToken ct)
-    {
-        var nameValidation = FileNameValidator.Validate(name);
-        if (!nameValidation.IsSuccess)
-            return Result<CreateFileResponse>.Failure(nameValidation.Error!);
-
-        var preCheck = ValidatePathAndConnection(parentPath);
-        if (preCheck is not null)
-            return Result<CreateFileResponse>.Failure(preCheck);
-
-        var fullPathValidation = PathValidator.ValidateFullPathLength(parentPath, name);
-        if (!fullPathValidation.IsSuccess)
-            return Result<CreateFileResponse>.Failure(fullPathValidation.Error!);
-
-        var fullPath = PathHelper.Combine(parentPath, name);
-        var command = new AdbCommand($"shell touch \"{fullPath}\"", CreateDirectoryTimeout, $"touch {fullPath}");
-        var result = await ExecuteAndParseAsync(command, parentPath, ct);
-
-        if (!result.IsSuccess)
-            return Result<CreateFileResponse>.Failure(result.Error!);
-
-        logger.LogInformation("File created: {FullPath}", fullPath);
-        return Result<CreateFileResponse>.Success(new CreateFileResponse(fullPath));
+        var command = new AdbCommand($"shell {shellVerb} \"{fullPath}\"", CreateDirectoryTimeout, $"{shellVerb} {fullPath}");
+        return await RunFileOpAsync(parentPath, command, _ =>
+        {
+            logger.LogInformation(successLog, fullPath);
+            return toResponse(fullPath);
+        }, ct);
     }
 
     public async Task<Result<UploadFileResponse>> UploadFileAsync(string localFilePath, string destinationPath, CancellationToken ct)
@@ -111,17 +87,13 @@ public sealed class FileStorageService(
         var fileName = Path.GetFileName(localFilePath);
         var fullPath = PathHelper.Combine(destinationPath, fileName);
 
-        // `adb push` is a direct adb command (not a shell command). The timeout
-        // scales with file size so large uploads are not cut off mid-transfer.
         var timeout = TimeoutForFile(localFilePath);
         var command = new AdbCommand($"push \"{localFilePath}\" \"{fullPath}\"", timeout, $"push {fileName}");
-        var result = await ExecuteAndParseAsync(command, destinationPath, ct);
-
-        if (!result.IsSuccess)
-            return Result<UploadFileResponse>.Failure(result.Error!);
-
-        logger.LogInformation("Uploaded '{Local}' to '{FullPath}'", localFilePath, fullPath);
-        return Result<UploadFileResponse>.Success(new UploadFileResponse(fullPath));
+        return await RunFileOpAsync(destinationPath, command, _ =>
+        {
+            logger.LogInformation("Uploaded '{Local}' to '{FullPath}'", localFilePath, fullPath);
+            return new UploadFileResponse(fullPath);
+        }, ct);
     }
 
     private static TimeSpan TimeoutForFile(string localFilePath)
@@ -153,13 +125,11 @@ public sealed class FileStorageService(
         var newFullPath = PathHelper.Combine(parentPath, newName);
 
         var command = new AdbCommand($"shell mv \"{currentPath}\" \"{newFullPath}\"", RenameTimeout, "rename");
-        var result = await ExecuteAndParseAsync(command, currentPath, ct);
-
-        if (!result.IsSuccess)
-            return Result<RenameResponse>.Failure(result.Error!);
-
-        logger.LogInformation("Renamed '{CurrentPath}' to '{NewPath}'", currentPath, newFullPath);
-        return Result<RenameResponse>.Success(new RenameResponse(newFullPath));
+        return await RunFileOpAsync(currentPath, command, _ =>
+        {
+            logger.LogInformation("Renamed '{CurrentPath}' to '{NewPath}'", currentPath, newFullPath);
+            return new RenameResponse(newFullPath);
+        }, ct);
     }
 
     public async Task<Result<DeleteResponse>> DeleteAsync(string path, CancellationToken ct)
@@ -169,13 +139,11 @@ public sealed class FileStorageService(
             return Result<DeleteResponse>.Failure(preCheck);
 
         var command = new AdbCommand($"shell rm -rf \"{path}\"", DeleteTimeout, $"rm -rf {path}");
-        var result = await ExecuteAndParseAsync(command, path, ct);
-
-        if (!result.IsSuccess)
-            return Result<DeleteResponse>.Failure(result.Error!);
-
-        logger.LogInformation("Deleted: {Path}", path);
-        return Result<DeleteResponse>.Success(new DeleteResponse(path));
+        return await RunFileOpAsync(path, command, _ =>
+        {
+            logger.LogInformation("Deleted: {Path}", path);
+            return new DeleteResponse(path);
+        }, ct);
     }
 
     private Error? ValidatePathAndConnection(string path)
@@ -226,58 +194,13 @@ public sealed class FileStorageService(
         return Result<CommandResult>.Success(commandResult);
     }
 
-    private static List<FileEntry> ParseLsOutput(string output)
+    private async Task<Result<T>> RunFileOpAsync<T>(
+        string contextPath, AdbCommand command, Func<CommandResult, T> onSuccess, CancellationToken ct)
     {
-        var entries = new List<FileEntry>();
-        var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-
-        foreach (var line in lines)
-        {
-            var entry = TryParseLsLine(line);
-            if (entry is not null)
-                entries.Add(entry);
-        }
-
-        return entries;
+        var result = await ExecuteAndParseAsync(command, contextPath, ct);
+        return result.IsSuccess
+            ? Result<T>.Success(onSuccess(result.Value!))
+            : Result<T>.Failure(result.Error!);
     }
 
-    private static FileEntry? TryParseLsLine(string line)
-    {
-        var trimmed = line.Trim();
-
-        if (trimmed.Length < 10 || trimmed.StartsWith("total", StringComparison.OrdinalIgnoreCase))
-            return null;
-
-        var typeChar = trimmed[0];
-        if (typeChar is not ('d' or '-' or 'l'))
-            return null;
-
-        var parts = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 8)
-            return null;
-
-        var name = string.Join(' ', parts[7..]);
-
-        if (name is "." or "..")
-            return null;
-
-        if (typeChar == 'l')
-        {
-            var arrowIndex = name.IndexOf(" -> ", StringComparison.Ordinal);
-            if (arrowIndex >= 0)
-                name = name[..arrowIndex];
-        }
-
-        var entryType = typeChar == 'd' ? FileEntryType.Directory : FileEntryType.File;
-        long.TryParse(parts[4], NumberStyles.Integer, CultureInfo.InvariantCulture, out var size);
-
-        var dateTimeStr = $"{parts[5]} {parts[6]}";
-        if (!DateTimeOffset.TryParseExact(dateTimeStr, "yyyy-MM-dd HH:mm",
-                CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var modifiedAt))
-        {
-            modifiedAt = DateTimeOffset.MinValue;
-        }
-
-        return new FileEntry(name, size, modifiedAt, entryType);
-    }
 }

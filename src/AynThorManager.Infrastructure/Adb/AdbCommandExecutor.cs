@@ -16,14 +16,10 @@ public sealed class AdbCommandExecutor(
 {
     private readonly string _adbPath = options.Value.AdbPath;
 
-    public Task<CommandResult> ExecuteAsync(string arguments, TimeSpan timeout, CancellationToken ct)
+    public async Task<CommandResult> ExecuteAsync(string arguments, TimeSpan timeout, CancellationToken ct)
     {
         logger.LogDebug("ADB: {Arguments} (timeout: {Timeout})", arguments, timeout);
-        return ExecuteInternalAsync(arguments, timeout, ct);
-    }
 
-    private async Task<CommandResult> ExecuteInternalAsync(string arguments, TimeSpan timeout, CancellationToken ct)
-    {
         var stopwatch = Stopwatch.StartNew();
 
         using var timeoutCts = new CancellationTokenSource(timeout);
@@ -53,51 +49,35 @@ public sealed class AdbCommandExecutor(
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
         {
-            stopwatch.Stop();
             logger.LogWarning("ADB command timed out after {Timeout}: {Arguments}", timeout, arguments);
-
-            return new CommandResult(
-                Success: false,
-                StandardOutput: string.Empty,
-                StandardError: $"Command timed out after {timeout.TotalSeconds:F0} seconds",
-                ExitCode: -1,
-                Duration: stopwatch.Elapsed);
+            return Failure(stopwatch, $"Command timed out after {timeout.TotalSeconds:F0} seconds", -1);
         }
         catch (OperationCanceledException)
         {
-            stopwatch.Stop();
             logger.LogDebug("ADB command cancelled: {Arguments}", arguments);
-
-            return new CommandResult(
-                Success: false,
-                StandardOutput: string.Empty,
-                StandardError: "Command was cancelled",
-                ExitCode: -1,
-                Duration: stopwatch.Elapsed);
+            return Failure(stopwatch, "Command was cancelled", -1);
         }
         catch (CommandExecutionException ex)
         {
-            stopwatch.Stop();
             logger.LogError(ex, "ADB command execution failed: {Arguments}", arguments);
-
-            return new CommandResult(
-                Success: false,
-                StandardOutput: string.Empty,
-                StandardError: ex.Message,
-                ExitCode: ex.ExitCode,
-                Duration: stopwatch.Elapsed);
+            return Failure(stopwatch, ex.Message, ex.ExitCode);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            stopwatch.Stop();
             logger.LogError(ex, "Unexpected error executing ADB command: {Arguments}", arguments);
-
-            return new CommandResult(
-                Success: false,
-                StandardOutput: string.Empty,
-                StandardError: ex.Message,
-                ExitCode: -1,
-                Duration: stopwatch.Elapsed);
+            return Failure(stopwatch, ex.Message, -1);
         }
+    }
+
+    /// <summary>Builds a failed <see cref="CommandResult"/> with empty output and the elapsed time.</summary>
+    private static CommandResult Failure(Stopwatch stopwatch, string standardError, int exitCode)
+    {
+        stopwatch.Stop();
+        return new CommandResult(
+            Success: false,
+            StandardOutput: string.Empty,
+            StandardError: standardError,
+            ExitCode: exitCode,
+            Duration: stopwatch.Elapsed);
     }
 }

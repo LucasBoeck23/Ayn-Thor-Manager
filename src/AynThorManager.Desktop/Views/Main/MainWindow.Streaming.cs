@@ -14,15 +14,6 @@ public partial class MainWindow
         if (device is null) { ConnMessage.Text = "Conecte primeiro"; return; }
         if (_scrcpyProcess is { HasExited: false }) return; // already mirroring
 
-        // scrcpy opens its own window. It is fast (hardware decode, low latency) and
-        // manages the device encoder cleanly, which is why we let it own the window
-        // instead of trying to embed or re-render the stream ourselves.
-        //
-        // Tuned for the direct hotspot link. H.265 gives better quality per bit, so
-        // a moderate bitrate stays sharp without saturating the link — a too-high
-        // bitrate on a bandwidth-limited AP congests the channel and adds INPUT lag
-        // (touch/keyboard events queue behind video). A small video buffer smooths
-        // jitter; buffer=0 can actually feel worse when bandwidth is tight.
         var args = $"-s {device.Serial} --keyboard=uhid --mouse=sdk --gamepad=uhid " +
                    "--video-codec=h265 --video-bit-rate=12M --max-fps=60 " +
                    "--video-buffer=25 --no-audio --window-title=\"AYN Thor\"";

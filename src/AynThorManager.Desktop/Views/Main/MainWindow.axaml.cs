@@ -20,9 +20,6 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Closing += MainWindow_Closing;
-
-        // Prefer an adb with working mDNS (official platform-tools) so wireless
-        // debugging ports can be discovered; fall back to PATH otherwise.
         var adbPath = AdbLocator.ResolveAsync(AdbLocator.DefaultCandidates()).GetAwaiter().GetResult();
         var options = Options.Create(new AdbOptions { AdbPath = adbPath });
         var executor = new AdbCommandExecutor(options, NullLogger<AdbCommandExecutor>.Instance);
@@ -61,7 +58,6 @@ public class FileItem
     public bool IsDirectory { get; set; }
     public string FullPath { get; set; } = "";
 
-    /// <summary>Picks an emoji icon from the entry type and file extension.</summary>
     public static string IconFor(string name, bool isDirectory)
     {
         if (isDirectory) return "📁";

@@ -4,14 +4,6 @@ using Microsoft.Extensions.Logging;
 
 namespace AynThorManager.Services.DirectConnection;
 
-/// <summary>
-/// Orchestrates a direct PC-to-Thor Wi-Fi link: raises a hotspot on the PC and
-/// waits for the Thor to join, then reports the Thor's IP so the caller can run
-/// the normal adb wireless connect against a dedicated, stable network.
-///
-/// Deliberately isolated: it reuses <see cref="HotspotController"/> and hands the
-/// discovered IP back to the existing connection flow instead of duplicating it.
-/// </summary>
 public sealed class DirectConnectionService(
     IHotspotController hotspot,
     ILogger<DirectConnectionService> logger)
@@ -29,11 +21,6 @@ public sealed class DirectConnectionService(
         await hotspot.StopAsync(ct);
     }
 
-    /// <summary>
-    /// Polls the hotspot for a joined client and returns the first reachable IP
-    /// that was not present when polling started (i.e. the Thor joining). Returns
-    /// null if nothing new joins within <paramref name="timeout"/>.
-    /// </summary>
     public async Task<string?> WaitForDeviceAsync(TimeSpan timeout, CancellationToken ct)
     {
         // Snapshot who is already present so we only report the newcomer.

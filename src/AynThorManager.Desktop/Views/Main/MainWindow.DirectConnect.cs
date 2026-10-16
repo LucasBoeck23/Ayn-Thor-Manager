@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Avalonia.Interactivity;
 using AynThorManager.Infrastructure.Network;
 using AynThorManager.Services.DirectConnection;
@@ -6,13 +5,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AynThorManager.Desktop;
 
-/// <summary>
-/// "Conexão Direta": turns the PC into a Wi-Fi hotspot so the Thor connects to a
-/// dedicated two-device network (no router, lower latency, more stable), then
-/// discovers the Thor's IP and hands it to the existing adb connect flow.
-///
-/// Fully isolated from the normal Wi-Fi connection code in MainWindow.Connection.cs.
-/// </summary>
 public partial class MainWindow
 {
     private const string DirectSsid = "AynThorLink";
@@ -27,7 +19,7 @@ public partial class MainWindow
     {
         if (_directActive) return;
 
-        var iface = DetectWifiInterface();
+        var iface = await HotspotController.DetectWifiInterfaceAsync();
         if (iface is null)
         {
             ShowDirect("Nenhuma interface Wi-Fi encontrada para criar o hotspot.");
@@ -79,11 +71,6 @@ public partial class MainWindow
 
     private async void BtnDirectRetry_Click(object? sender, RoutedEventArgs e) => await DiscoverAndConnectAsync();
 
-    /// <summary>
-    /// Discovers the ADB port on the known hotspot IP and connects. Separated out so
-    /// the "Tentar de novo" button can re-run it: the Thor often finishes joining /
-    /// opens its ADB port a moment after the first scan, so a re-scan then succeeds.
-    /// </summary>
     private async Task DiscoverAndConnectAsync()
     {
         if (_directBusy || _directIp is null) return;
@@ -93,11 +80,9 @@ public partial class MainWindow
         try
         {
             var ip = _directIp;
-
-            // The Thor's wireless-debugging port is random, so scan the known port
-            // range on the discovered IP and connect to the first port adb accepts.
             ShowDirect($"Thor em {ip}. Procurando a porta do ADB...");
-            var connected = await ScanAndConnectAsync(ip, default);
+            var scanner = new AdbPortScanner();
+            var connected = await TryRangeAsync(scanner, ip, AdbPortScanner.DefaultStartPort, AdbPortScanner.DefaultEndPort, default);
             if (connected)
             {
                 BtnDirectRetry.IsVisible = false;
@@ -149,25 +134,6 @@ public partial class MainWindow
         DirectMessage.IsVisible = true;
     }
 
-    /// <summary>
-    /// Scans the ADB wireless port range on <paramref name="ip"/> and tries to
-    /// connect to each open port, stopping at the first that adb accepts. Returns
-    /// true once connected (and the UI is updated via the normal connect result).
-    /// </summary>
-    private async Task<bool> ScanAndConnectAsync(string ip, CancellationToken ct)
-    {
-        var scanner = new AdbPortScanner();
-
-        // Scan the most likely sub-range first (37000–44000 covers most devices);
-        // only widen to the full range if nothing is found there. Keeps the common
-        // case fast while still handling ports outside the usual window.
-        if (await TryRangeAsync(scanner, ip, 37000, 44000, ct)) return true;
-        if (await TryRangeAsync(scanner, ip, AdbPortScanner.DefaultStartPort, 36999, ct)) return true;
-        if (await TryRangeAsync(scanner, ip, 44001, AdbPortScanner.DefaultEndPort, ct)) return true;
-
-        return false;
-    }
-
     private async Task<bool> TryRangeAsync(AdbPortScanner scanner, string ip, int start, int end, CancellationToken ct)
     {
         ShowDirect($"Procurando a porta do ADB em {ip} ({start}-{end})...");
@@ -189,35 +155,4 @@ public partial class MainWindow
         return false;
     }
 
-    /// <summary>Finds the first Wi-Fi interface name via nmcli (e.g. "wlp2s0").</summary>
-    private static string? DetectWifiInterface()
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "nmcli",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true,
-            };
-            foreach (var a in new[] { "-t", "-f", "DEVICE,TYPE", "device" })
-                psi.ArgumentList.Add(a);
-
-            using var p = Process.Start(psi);
-            if (p is null) return null;
-            var output = p.StandardOutput.ReadToEnd();
-            p.WaitForExit(3000);
-
-            foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-            {
-                var parts = line.Split(':');
-                if (parts.Length >= 2 && parts[1].Trim() == "wifi")
-                    return parts[0].Trim();
-            }
-        }
-        catch { /* nmcli missing or failed */ }
-
-        return null;
-    }
 }

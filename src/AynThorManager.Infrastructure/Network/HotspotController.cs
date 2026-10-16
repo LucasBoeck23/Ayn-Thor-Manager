@@ -28,6 +28,27 @@ public sealed class HotspotController : IHotspotController
     }
 
     /// <summary>
+    /// Finds the first Wi-Fi interface name (e.g. "wlp2s0") via nmcli, or null if
+    /// none is found or nmcli is unavailable. Used to pick the adapter to host the
+    /// hotspot on.
+    /// </summary>
+    public static async Task<string?> DetectWifiInterfaceAsync(CancellationToken ct = default)
+    {
+        var result = await RunAsync("nmcli", new[] { "-t", "-f", "DEVICE,TYPE", "device" }, ct);
+        if (result.ExitCode != 0)
+            return null;
+
+        foreach (var line in result.StandardOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = line.Split(':');
+            if (parts.Length >= 2 && parts[1].Trim() == "wifi")
+                return parts[0].Trim();
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Brings up the hotspot. On success the PC serves a Wi-Fi network with the
     /// given SSID/password that the Thor can join. Returns the error text on failure.
     /// </summary>
