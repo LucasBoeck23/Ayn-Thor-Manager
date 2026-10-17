@@ -8,14 +8,19 @@ public partial class MainWindow
 {
     private Process? _scrcpyProcess;
 
-    private void BtnStream_Click(object? sender, RoutedEventArgs e)
+    private async void BtnStream_Click(object? sender, RoutedEventArgs e)
     {
         var device = _device.Current;
         if (device is null) { ConnMessage.Text = "Conecte primeiro"; return; }
-        if (_scrcpyProcess is { HasExited: false }) return; 
+        if (_scrcpyProcess is { HasExited: false }) return;
 
-        var args = BuildScrcpyArgs(device.Serial);
+        BtnStream.IsEnabled = false;
+        StreamStatus.Text = "Medindo a rede...";
+        StreamStatus.Foreground = SecondaryBrush;
+
+        var args = await BuildScrcpyArgsAsync(device.Serial);
         StreamSettingsHint.IsVisible = false;
+        BtnStream.IsEnabled = true;
 
         try
         {
@@ -40,6 +45,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             ConnMessage.Text = $"Scrcpy não encontrado: {ex.Message}\nInstale com: sudo apt install scrcpy";
+            BtnStream.IsEnabled = true;
             StopStreaming();
         }
     }

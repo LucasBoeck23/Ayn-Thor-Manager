@@ -9,7 +9,11 @@ public partial class MainWindow
     private readonly record struct StreamSettings(
         string Codec, int BitrateMbps, int MaxFps, int VideoBufferMs, int MaxSize);
 
-    private static readonly StreamSettings QualityPreset = new("h265", 20, 60, 40, 0);
+    // On the Thor's dedicated 5 GHz hotspot the jitter is low, so the quality preset
+    // drops the video buffer to 0 for minimum latency and raises fps to match the
+    // Thor's high-refresh screen. Stability keeps a small buffer as a safety net for
+    // weaker links.
+    private static readonly StreamSettings QualityPreset = new("h265", 24, 120, 0, 0);
     private static readonly StreamSettings StabilityPreset = new("h265", 8, 30, 10, 1280);
 
     private void ShowStreamSettings(bool visible)
@@ -86,17 +90,61 @@ public partial class MainWindow
         VideoBufferMs: (int)SldBuffer.Value,
         MaxSize: (int)SldMaxSize.Value);
 
-    /// <summary>Builds the scrcpy argument string from the current settings.</summary>
-    private string BuildScrcpyArgs(string serial)
+    /// <summary>
+    /// Builds the scrcpy argument string. When the user left the buffer at 0 (minimum
+    /// latency), it first samples the network jitter and, if the link turns out to be
+    /// unstable, raises the buffer for this session so the stream won't stutter.
+    /// </summary>
+    private async Task<string> BuildScrcpyArgsAsync(string serial)
     {
         var s = CurrentStreamSettings();
+
+        var buffer = s.VideoBufferMs;
+        if (buffer == 0)
+            buffer = await PickAdaptiveBufferAsync();
+
         var args = $"-s {serial} --keyboard=uhid --mouse=sdk --gamepad=uhid " +
                    $"--video-codec={s.Codec} --video-bit-rate={s.BitrateMbps}M --max-fps={s.MaxFps} " +
-                   $"--video-buffer={s.VideoBufferMs} --no-audio --window-title=\"AYN Thor\"";
+                   $"--video-buffer={buffer} --no-audio --window-title=\"AYN Thor\"";
 
         if (s.MaxSize > 0)
             args += $" --max-size={s.MaxSize}";
 
         return args;
+    }
+
+    /// <summary>
+    /// Samples round-trip latency a few times and derives a video buffer from the
+    /// jitter (how much latency varies). A steady link keeps buffer 0 (lowest latency);
+    /// a jittery link gets a buffer sized to absorb the variation and avoid stutter.
+    /// </summary>
+    private async Task<int> PickAdaptiveBufferAsync()
+    {
+        const int samples = 5;
+        var latencies = new List<int>(samples);
+
+        for (var i = 0; i < samples; i++)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var ping = await _device.RunAsync("shell echo ok", TimeSpan.FromSeconds(2), default);
+            sw.Stop();
+            if (ping.IsSuccess && ping.Value!.Success)
+                latencies.Add((int)sw.ElapsedMilliseconds);
+        }
+
+        if (latencies.Count < 2)
+            return 0; // couldn't measure; trust the user's choice (0)
+
+        // Jitter = spread between the fastest and slowest round-trip.
+        var jitter = latencies.Max() - latencies.Min();
+
+        // Buffer only needs to cover the jitter. Keep it off on steady links.
+        return jitter switch
+        {
+            < 8 => 0,     // very steady (dedicated 5 GHz): no buffer, lowest latency
+            < 20 => 10,   // mild variation
+            < 40 => 25,   // noticeable jitter
+            _ => 40,      // unstable link: protect against stutter
+        };
     }
 }
