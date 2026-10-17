@@ -12,24 +12,40 @@ namespace AynThorManager.Desktop;
 
 public partial class MainWindow : Window
 {
-    private readonly DeviceConnection _device;
-    private readonly IFileStorageService _fileService;
+    private DeviceConnection _device = null!;
+    private IFileStorageService _fileService = null!;
     private string _currentPath = "/storage/";
 
     public MainWindow()
     {
         InitializeComponent();
         Closing += MainWindow_Closing;
-        var adbPath = AdbLocator.ResolveAsync(AdbLocator.DefaultCandidates()).GetAwaiter().GetResult();
+
+        SetupFileDragDrop();
+
+        // Resolving which adb to use probes the filesystem and runs "adb mdns check",
+        // which starts the adb server (several seconds on a cold start). Doing that in
+        // the constructor used to block the UI thread, so the window only appeared once
+        // adb was ready. Build the backend off the UI thread so the window shows at once.
+        _ = InitializeDeviceAsync();
+
+        // Make sure the window comes to the front on launch (some compositors open
+        // it unfocused/behind otherwise).
+        Opened += (_, _) => Activate();
+    }
+
+    private async Task InitializeDeviceAsync()
+    {
+        var adbPath = await Task.Run(() => AdbLocator.ResolveAsync(AdbLocator.DefaultCandidates()));
         var options = Options.Create(new AdbOptions { AdbPath = adbPath });
         var executor = new AdbCommandExecutor(options, NullLogger<AdbCommandExecutor>.Instance);
         var queue = new CommandQueue(executor, NullLogger<CommandQueue>.Instance);
 
-        _device = new DeviceConnection(queue, NullLogger<DeviceConnection>.Instance);
-        _device.StateChanged += device => Dispatcher.UIThread.Post(() => OnDeviceChanged(device));
-        _fileService = new FileStorageService(_device, NullLogger<FileStorageService>.Instance);
+        var device = new DeviceConnection(queue, NullLogger<DeviceConnection>.Instance);
+        device.StateChanged += d => Dispatcher.UIThread.Post(() => OnDeviceChanged(d));
 
-        SetupFileDragDrop();
+        _device = device;
+        _fileService = new FileStorageService(device, NullLogger<FileStorageService>.Instance);
     }
 
     private async void MainWindow_Closing(object? sender, WindowClosingEventArgs e)

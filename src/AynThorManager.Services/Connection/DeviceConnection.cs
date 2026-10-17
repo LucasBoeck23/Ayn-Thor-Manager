@@ -32,6 +32,39 @@ public sealed class DeviceConnection(
         return result.IsSuccess ? AdbOutputParser.ParseDevices(result.Value!.StandardOutput) : [];
     }
 
+    /// <summary>
+    /// One-time setup over USB: with the Thor plugged in (USB debugging authorized),
+    /// switches its adb daemon to listen on a fixed TCP port (5555). After this the
+    /// cable can be removed and the device is reachable over Wi-Fi at that port —
+    /// including when the Thor is acting as a hotspot (unlike mDNS wireless debugging).
+    /// </summary>
+    public async Task<Result<ThorDevice>> PrepareUsbTcpipAsync(CancellationToken ct)
+    {
+        var usb = (await ListDevicesAsync(ct))
+            .FirstOrDefault(d => d.Transport == DeviceTransport.Usb);
+
+        if (usb is null)
+            return Fail("USB_NOT_FOUND",
+                "Nenhum Thor encontrado via USB. Conecte o cabo e ative a Depuração USB no Thor.");
+
+        if (usb is { State: "unauthorized" })
+            return Fail("UNAUTHORIZED",
+                "Aceite o pedido de Depuração USB na tela do Thor e tente de novo.");
+
+        if (!usb.IsReady)
+            return Fail("USB_NOT_READY", $"O Thor via USB não está pronto (estado: {usb.State}).");
+
+        var tcpip = await RawAsync($"-s {usb.Serial} tcpip {DefaultAdbPort}", QuickTimeout, ct);
+        if (!tcpip.IsSuccess || tcpip.Value!.ExitCode != 0)
+        {
+            var detail = tcpip.Value is null ? tcpip.Error?.Message : tcpip.Value.StandardError.Trim();
+            return Fail("TCPIP_FAILED", $"Não foi possível preparar o modo sem fio: {detail}");
+        }
+
+        logger.LogInformation("Thor {Serial} switched to tcpip:{Port}", usb.Serial, DefaultAdbPort);
+        return Result<ThorDevice>.Success(new ThorDevice(usb.Serial, DeviceTransport.Usb, usb.Model?.Replace('_', ' ') ?? "Android"));
+    }
+
     public async Task<Result<ThorDevice>> ConnectAsync(string address, CancellationToken ct)
     {
         var target = (address ?? "").Trim();

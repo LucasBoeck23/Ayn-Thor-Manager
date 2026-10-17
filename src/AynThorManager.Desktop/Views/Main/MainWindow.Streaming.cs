@@ -14,9 +14,8 @@ public partial class MainWindow
         if (device is null) { ConnMessage.Text = "Conecte primeiro"; return; }
         if (_scrcpyProcess is { HasExited: false }) return; 
 
-        var args = $"-s {device.Serial} --keyboard=uhid --mouse=sdk --gamepad=uhid " +
-                   "--video-codec=h265 --video-bit-rate=12M --max-fps=60 " +
-                   "--video-buffer=25 --no-audio --window-title=\"AYN Thor\"";
+        var args = BuildScrcpyArgs(device.Serial);
+        StreamSettingsHint.IsVisible = false;
 
         try
         {

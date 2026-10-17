@@ -13,6 +13,7 @@ public partial class MainWindow
     {
         _netStatsTimer?.Stop(); 
         NetStatsPanel.IsVisible = true;
+        ShowStreamSettings(true);
         _netStatsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _netStatsTimer.Tick += async (_, _) => await UpdateNetStats();
         _netStatsTimer.Start();
@@ -24,6 +25,7 @@ public partial class MainWindow
         _netStatsTimer?.Stop();
         _netStatsTimer = null;
         NetStatsPanel.IsVisible = false;
+        ShowStreamSettings(false);
     }
 
     private async Task UpdateNetStats()
