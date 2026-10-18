@@ -2,6 +2,7 @@ using AynThorManager.Core.Interfaces;
 using AynThorManager.Infrastructure.Adb;
 using AynThorManager.Infrastructure.Network;
 using AynThorManager.Infrastructure.Streaming;
+using AynThorManager.Infrastructure.Settings;
 using AynThorManager.Services.Adb;
 using AynThorManager.Services.Connection;
 using AynThorManager.Services.FileStorage;
@@ -24,19 +25,28 @@ public sealed class AppServices
     public DirectConnectionService DirectConnection { get; }
     public NetworkMonitor NetworkMonitor { get; }
     public StreamingService Streaming { get; }
+    public ReverseStreamingService ReverseStreaming { get; }
+    public IConnectionSettingsStore ConnectionSettings { get; }
+    public ISecretStore Secrets { get; }
 
     private AppServices(
         DeviceConnection device,
         IFileStorageService fileService,
         DirectConnectionService directConnection,
         NetworkMonitor networkMonitor,
-        StreamingService streaming)
+        StreamingService streaming,
+        ReverseStreamingService reverseStreaming,
+        IConnectionSettingsStore connectionSettings,
+        ISecretStore secrets)
     {
         Device = device;
         FileService = fileService;
         DirectConnection = directConnection;
         NetworkMonitor = networkMonitor;
         Streaming = streaming;
+        ReverseStreaming = reverseStreaming;
+        ConnectionSettings = connectionSettings;
+        Secrets = secrets;
     }
 
     /// <summary>
@@ -59,6 +69,27 @@ public sealed class AppServices
         var streaming = new StreamingService(
             device, new ScrcpyMirror(), networkMonitor, NullLogger<StreamingService>.Instance);
 
-        return new AppServices(device, fileService, directConnection, networkMonitor, streaming);
+        // Reverse direction (PC → Thor): Sunshine host on the PC + Moonlight on the Thor.
+        // One ReverseStreamingService owns its leaf collaborators (prerequisites/host are
+        // Infrastructure leaves; MoonlightClient is a Services leaf). The SAME forward
+        // StreamingService exposed as Streaming is handed to the reverse orchestrator, so
+        // UI mutual exclusion (Req 7) and the backend operate on a single object.
+        var moonlight = new MoonlightClient(device, NullLogger<MoonlightClient>.Instance);
+        var reverseStreaming = new ReverseStreamingService(
+            device,
+            streaming,
+            new SunshinePrerequisites(),
+            moonlight,
+            new SunshineHost(),
+            NullLogger<ReverseStreamingService>.Instance);
+
+        // Persisted hotspot preferences: SSID in a config file, password in the
+        // system keyring (best-effort — degrades cleanly without a keyring backend).
+        var connectionSettings = new ConnectionSettingsStore();
+        var secrets = new SecretToolStore();
+
+        return new AppServices(
+            device, fileService, directConnection, networkMonitor, streaming, reverseStreaming,
+            connectionSettings, secrets);
     }
 }

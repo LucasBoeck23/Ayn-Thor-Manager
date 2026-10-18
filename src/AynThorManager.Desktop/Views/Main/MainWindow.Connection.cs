@@ -32,11 +32,15 @@ public partial class MainWindow
             StatusDot.Fill = DangerBrush;
             StatusText.Text = "Desconectado";
             StopNetStats();
+            // Req 1.5: the PC→Thor action becomes unavailable without a Thor connected.
+            UpdateActionAvailability();
             return;
         }
 
         StatusDot.Fill = SuccessBrush;
         StatusText.Text = $"Conectado ({device.Model})";
         StartNetStats();
+        // Req 1.5: re-enable the PC→Thor action now that a Thor is connected.
+        UpdateActionAvailability();
     }
 }

@@ -6,6 +6,7 @@
     <Project Path="src/AynThorManager.Services/AynThorManager.Services.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/AynThorManager.Infrastructure.Tests/AynThorManager.Infrastructure.Tests.csproj" />
     <Project Path="tests/AynThorManager.Services.Tests/AynThorManager.Services.Tests.csproj" />
   </Folder>
 </Solution>

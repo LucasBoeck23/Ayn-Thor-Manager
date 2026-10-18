@@ -142,20 +142,109 @@
         <DockPanel Grid.Column="1">
             <Border DockPanel.Dock="Top" Padding="12" Background="#16213e" BorderBrush="#0f3460" BorderThickness="0,0,0,1">
                 <StackPanel Orientation="Horizontal">
+                    <!-- Direção do streaming (Req 1.1). Dois ToggleButtons mutuamente
+                         exclusivos: Thor→PC é o padrão (scrcpy, comportamento atual);
+                         PC→Thor é o fluxo reverso (Sunshine + Moonlight). -->
+                    <Border Background="#0e1a30" CornerRadius="4" Padding="2" Margin="0,0,12,0"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <ToggleButton x:Name="ToggleThorToPc" Content="Thor → PC"
+                                          IsChecked="True"
+                                          Click="ToggleThorToPc_Click"
+                                          Classes="btn default" FontSize="11" Padding="10,4" />
+                            <ToggleButton x:Name="TogglePcToThor" Content="PC → Thor"
+                                          Click="TogglePcToThor_Click"
+                                          Classes="btn default" FontSize="11" Padding="10,4" Margin="2,0,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Botão de ação único: despacha para o sentido selecionado (Req 1.2). -->
                     <Button x:Name="BtnStream" Content="Espelhar Tela" Click="BtnStream_Click" Classes="btn primary" Margin="0,0,8,0" />
                     <Button x:Name="BtnStopStream" Content="Parar" Click="BtnStopStream_Click" Classes="btn danger" IsVisible="False" />
-                    <TextBlock x:Name="StreamStatus" Text="Inativo" VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11" Foreground="#78909c" />
+                    <TextBlock x:Name="StreamStatus" Text="Inativo" VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11" Foreground="#78909c" TextWrapping="Wrap" />
+
+                    <!-- Link para a WebUI do Sunshine, visível quando o PC→Thor está ativo:
+                         leva o usuário direto ao painel (parear, PIN, configurar). -->
+                    <Button x:Name="BtnSunshineWebUi" Content="Acessar Sunshine: https://localhost:47990"
+                            Click="BtnSunshineWebUi_Click" Classes="btn default" FontSize="11"
+                            Padding="10,4" Margin="12,0,0,0" VerticalAlignment="Center"
+                            IsVisible="False"
+                            ToolTip.Tip="Abre o painel do Sunshine no navegador" />
+                </StackPanel>
+            </Border>
+
+            <!-- Aviso best-effort, não-bloqueante (Req 5.2 / 6.2). Aparece quando o encode
+                 por hardware (VAAPI) não é confirmado — provável fallback para software,
+                 que degrada a performance em jogos — ou quando a captura via Portal não
+                 está disponível. É apenas um aviso: o streaming segue permitido. Fica
+                 separado da checklist bloqueante dos pré-requisitos (6.3). -->
+            <Border x:Name="WarningBanner" DockPanel.Dock="Top" IsVisible="False"
+                    Background="#2e2a16" BorderBrush="#f0a202" BorderThickness="0,0,0,2"
+                    Padding="12,8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="⚠" Foreground="#f0a202" FontSize="15" VerticalAlignment="Top" />
+                    <TextBlock x:Name="WarningText" Foreground="#ffd27a" FontSize="11"
+                               TextWrapping="Wrap" VerticalAlignment="Center" />
                 </StackPanel>
             </Border>
 
             <Border Background="Black">
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
-                    <TextBlock Text="📱" FontSize="48" HorizontalAlignment="Center" Opacity="0.5" />
-                    <TextBlock Text="Clique em &quot;Espelhar Tela&quot; para abrir a tela do Thor"
-                               Foreground="#78909c" FontSize="13" HorizontalAlignment="Center" TextAlignment="Center" />
-                    <TextBlock Text="A tela abre em uma janela separada do scrcpy."
-                               Foreground="#546e7a" FontSize="11" HorizontalAlignment="Center" TextAlignment="Center" />
-                </StackPanel>
+                <Grid>
+                    <!-- Dica padrão (Thor→PC): o scrcpy abre a tela do Thor em janela
+                         separada. Visível por padrão; escondido quando o fluxo guiado
+                         de pré-requisitos do PC→Thor assume o centro. -->
+                    <StackPanel x:Name="ScrcpyHint" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                        <TextBlock Text="📱" FontSize="48" HorizontalAlignment="Center" Opacity="0.5" />
+                        <TextBlock Text="Clique em &quot;Espelhar Tela&quot; para abrir a tela do Thor"
+                                   Foreground="#78909c" FontSize="13" HorizontalAlignment="Center" TextAlignment="Center" />
+                        <TextBlock Text="A tela abre em uma janela separada do scrcpy."
+                                   Foreground="#546e7a" FontSize="11" HorizontalAlignment="Center" TextAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Fluxo guiado de pré-requisitos (Req 2.3/2.4/6.2). Só o que falta é
+                         listado, cada item com nome, orientação e um link clicável quando
+                         houver URL. O app apenas orienta — nunca instala nada. -->
+                    <Border x:Name="PrereqPanel" IsVisible="False" Padding="24"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            MaxWidth="520">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="Pré-requisitos para usar o PC no Thor"
+                                       Foreground="#00d4ff" FontSize="15" FontWeight="Bold"
+                                       HorizontalAlignment="Center" TextAlignment="Center" />
+                            <TextBlock Text="Resolva os itens abaixo e tente de novo. O app não instala nada por você — só orienta."
+                                       Foreground="#78909c" FontSize="11" TextWrapping="Wrap"
+                                       HorizontalAlignment="Center" TextAlignment="Center" />
+
+                            <ItemsControl x:Name="PrereqList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:PrereqItem">
+                                        <Border Background="#16213e" BorderBrush="#0f3460" BorderThickness="1"
+                                                CornerRadius="4" Padding="12" Margin="0,0,0,8">
+                                            <StackPanel Spacing="4">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="⚠" Foreground="#ff5252" FontSize="13"
+                                                               VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding Name}" Foreground="#e0e0e0"
+                                                               FontSize="13" FontWeight="Bold"
+                                                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Guidance}" Foreground="#78909c"
+                                                           FontSize="11" TextWrapping="Wrap"
+                                                           IsVisible="{Binding Guidance, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                <Button Content="Abrir link"
+                                                        Click="PrereqLink_Click"
+                                                        Tag="{Binding Url}"
+                                                        Classes="btn primary" FontSize="11" Padding="10,4"
+                                                        HorizontalAlignment="Left" Margin="0,2,0,0"
+                                                        IsVisible="{Binding HasUrl}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Border>
         </DockPanel>
     </Grid>

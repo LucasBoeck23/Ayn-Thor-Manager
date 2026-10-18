@@ -17,11 +17,16 @@ public partial class MainWindow
         BtnDirectConnect.IsEnabled = false;
         try
         {
-            var result = await _directConnection.ConnectAsync(
-                TxtThorSsid.Text ?? "", TxtThorPassword.Text ?? "", default);
+            var ssid = TxtThorSsid.Text ?? "";
+            var password = TxtThorPassword.Text ?? "";
+            var result = await _directConnection.ConnectAsync(ssid, password, default);
 
             if (!_directConnection.IsActive)
                 return; // Wi-Fi failed; the service already reported the error.
+
+            // Joined the hotspot: remember the SSID (config) and password (keyring) so
+            // the fields pre-fill next time. Best-effort, must not block the flow.
+            await SaveConnectionAsync(ssid.Trim(), password.Trim());
 
             BtnDirectConnect.IsVisible = false;
             BtnDirectStop.IsVisible = true;

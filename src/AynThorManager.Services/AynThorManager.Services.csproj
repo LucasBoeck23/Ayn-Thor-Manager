@@ -12,6 +12,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Lets the test project exercise retries fast via the internal retry-delay ctor. -->
+    <InternalsVisibleTo Include="AynThorManager.Services.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AynThorManager.Core\AynThorManager.Core.csproj" />
   </ItemGroup>
 
