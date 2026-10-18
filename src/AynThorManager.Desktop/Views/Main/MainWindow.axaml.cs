@@ -1,12 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
 using AynThorManager.Core.Interfaces;
-using AynThorManager.Infrastructure.Adb;
-using AynThorManager.Services.Adb;
+using AynThorManager.Desktop.Composition;
 using AynThorManager.Services.Connection;
-using AynThorManager.Services.FileStorage;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
+using AynThorManager.Services.Streaming;
+using AynThorManager.Services.Telemetry;
 
 namespace AynThorManager.Desktop;
 
@@ -14,6 +12,9 @@ public partial class MainWindow : Window
 {
     private DeviceConnection _device = null!;
     private IFileStorageService _fileService = null!;
+    private DirectConnectionService _directConnection = null!;
+    private NetworkMonitor _networkMonitor = null!;
+    private StreamingService _streaming = null!;
     private string _currentPath = "/storage/";
 
     public MainWindow()
@@ -36,16 +37,18 @@ public partial class MainWindow : Window
 
     private async Task InitializeDeviceAsync()
     {
-        var adbPath = await Task.Run(() => AdbLocator.ResolveAsync(AdbLocator.DefaultCandidates()));
-        var options = Options.Create(new AdbOptions { AdbPath = adbPath });
-        var executor = new AdbCommandExecutor(options, NullLogger<AdbCommandExecutor>.Instance);
-        var queue = new CommandQueue(executor, NullLogger<CommandQueue>.Instance);
+        var services = await AppServices.CreateAsync();
 
-        var device = new DeviceConnection(queue, NullLogger<DeviceConnection>.Instance);
-        device.StateChanged += d => Dispatcher.UIThread.Post(() => OnDeviceChanged(d));
+        _device = services.Device;
+        _fileService = services.FileService;
+        _directConnection = services.DirectConnection;
+        _networkMonitor = services.NetworkMonitor;
+        _streaming = services.Streaming;
 
-        _device = device;
-        _fileService = new FileStorageService(device, NullLogger<FileStorageService>.Instance);
+        // UI event wiring: marshal backend callbacks onto the Dispatcher.
+        _device.StateChanged += d => Dispatcher.UIThread.Post(() => OnDeviceChanged(d));
+        _directConnection.Progress += msg => Dispatcher.UIThread.Post(() => ShowDirect(msg));
+        _streaming.Exited += () => Dispatcher.UIThread.Post(OnScrcpyExited);
     }
 
     private async void MainWindow_Closing(object? sender, WindowClosingEventArgs e)
