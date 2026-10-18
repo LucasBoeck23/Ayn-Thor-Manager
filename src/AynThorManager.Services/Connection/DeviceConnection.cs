@@ -137,7 +137,7 @@ public sealed class DeviceConnection(
         result.ExitCode == -1 && result.StandardError.StartsWith("Command timed out", StringComparison.Ordinal);
 
     private Task<Result<CommandResult>> RawAsync(string arguments, TimeSpan timeout, CancellationToken ct) =>
-        queue.EnqueueAsync(new AdbCommand(arguments, timeout, arguments), CommandPriority.Normal, ct);
+        queue.EnqueueAsync(new AdbCommand(arguments, timeout, arguments), ct);
 
     private Result<ThorDevice> Adopt(AdbDeviceEntry entry)
     {

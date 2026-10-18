@@ -29,7 +29,7 @@ internal sealed class FakeAdb : ICommandQueue
 
     public int CountOf(string arguments) => Calls.Count(c => c == arguments);
 
-    public Task<Result<CommandResult>> EnqueueAsync(AdbCommand command, CommandPriority priority, CancellationToken ct)
+    public Task<Result<CommandResult>> EnqueueAsync(AdbCommand command, CancellationToken ct)
     {
         Calls.Add(command.Arguments);
 
