@@ -1,5 +1,6 @@
 using CliWrap;
 using CliWrap.Buffered;
+using AynThorManager.Core.Interfaces;
 
 namespace AynThorManager.Infrastructure.Network;
 
@@ -11,7 +12,7 @@ namespace AynThorManager.Infrastructure.Network;
 /// is a rock-solid, root-free operation, and modern Android handhelds create a clean
 /// 5 GHz AP, so this gives a stable low-latency link without touching hostapd/drivers.
 /// </summary>
-public sealed class WifiConnectionService
+public sealed class WifiConnectionService : IWifiConnection
 {
     private const string ProfileName = "AynThorDirect";
 
