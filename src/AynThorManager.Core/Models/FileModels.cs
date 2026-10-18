@@ -1,4 +1,10 @@
-﻿namespace AynThorManager.Core.Models;
+namespace AynThorManager.Core.Models;
+
+public enum FileEntryType
+{
+    File,
+    Directory
+}
 
 public sealed record FileEntry(
     string Name,
