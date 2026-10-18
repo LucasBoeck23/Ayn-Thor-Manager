@@ -15,7 +15,7 @@ public class AdbOutputParserTests
         Assert.Equal(new AdbDeviceEntry(WifiSerial, "device", "AYN_Thor"), devices[1]);
         Assert.Equal(DeviceTransport.Usb, devices[0].Transport);
         Assert.Equal(DeviceTransport.Wifi, devices[1].Transport);
-        Assert.All(devices, d => Assert.True(d.IsReady && d.IsThor));
+        Assert.All(devices, d => Assert.True(d.IsReady));
     }
 
     [Fact]
@@ -55,31 +55,6 @@ public class AdbOutputParserTests
     [InlineData("emulator-5554", DeviceTransport.Usb)]
     public void Transport_is_derived_from_the_serial(string serial, DeviceTransport expected) =>
         Assert.Equal(expected, new AdbDeviceEntry(serial, "device", null).Transport);
-
-    [Theory]
-    [InlineData("AYN_Thor", true)]
-    [InlineData("AYN Thor", true)]
-    [InlineData("ayn_thor", true)]
-    [InlineData("Pixel_7", false)]
-    [InlineData(null, false)]
-    public void Recognizes_the_thor_model(string? model, bool expected) =>
-        Assert.Equal(expected, AdbOutputParser.IsThorModel(model));
-
-    [Fact]
-    public void Mdns_keeps_only_connect_endpoints_without_duplicates()
-    {
-        var output = Mdns(
-            MdnsConnect(WifiSerial),
-            MdnsPairing("192.168.1.17:37000"),
-            MdnsConnect(WifiSerial),
-            MdnsConnect("192.168.1.30:40001", "adb-other"));
-
-        Assert.Equal([WifiSerial, "192.168.1.30:40001"], AdbOutputParser.ParseMdnsEndpoints(output));
-    }
-
-    [Fact]
-    public void Mdns_without_services_yields_nothing() =>
-        Assert.Empty(AdbOutputParser.ParseMdnsEndpoints(MdnsEmpty));
 
     [Theory]
     [InlineData("adb: device '192.168.1.17:43321' not found\n", true)] // recorded

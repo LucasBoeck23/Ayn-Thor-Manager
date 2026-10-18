@@ -28,11 +28,6 @@ internal static class AdbOutputs
             ? $"{serial}     device product:kalama model:{model} device:kalama transport_id:9"
             : $"{serial}     {state} transport_id:9";
 
-    public static string UsbLine(string serial = UsbSerial, string state = "device") =>
-        state == "device"
-            ? $"{serial}               device usb:1-2 product:kalama model:AYN_Thor device:kalama transport_id:11"
-            : $"{serial}               {state} usb:1-2 transport_id:11";
-
     // recorded
     public static string ConnectedTo(string serial) => $"connected to {serial}\n";
     public static string AlreadyConnected(string serial) => $"already connected to {serial}\n";
@@ -40,7 +35,6 @@ internal static class AdbOutputs
     public static string ConnectionRefused(string serial) => $"failed to connect to '{serial}': Connection refused\n";
     public static string DeviceNotFound(string serial) => $"adb: device '{serial}' not found\n";
     public const string LsNoSuchFile = "ls: /naoexiste: No such file or directory\n";
-    public const string MdnsEmpty = "List of discovered mdns services\n\n";
 
     // documented formats (not reproducible without changing the device)
     public static string CannotConnect(string serial) => $"cannot connect to {serial}: Connection refused (111)\n";
@@ -49,13 +43,4 @@ internal static class AdbOutputs
     public const string Closed = "error: closed\n";
     public const string DaemonStarting =
         "* daemon not running; starting now at tcp:5037\n* daemon started successfully\n";
-
-    public static string Mdns(params string[] lines) =>
-        "List of discovered mdns services\n" + string.Concat(lines.Select(l => l + "\n")) + "\n";
-
-    public static string MdnsConnect(string endpoint, string name = "adb-c26efaeb-AbCdEf") =>
-        $"{name}\t_adb-tls-connect._tcp\t{endpoint}";
-
-    public static string MdnsPairing(string endpoint, string name = "adb-c26efaeb-AbCdEf") =>
-        $"{name}\t_adb-tls-pairing._tcp\t{endpoint}";
 }
