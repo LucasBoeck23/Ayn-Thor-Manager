@@ -3,6 +3,7 @@ using Avalonia.Threading;
 using AynThorManager.Core.Interfaces;
 using AynThorManager.Desktop.Composition;
 using AynThorManager.Services.Connection;
+using AynThorManager.Services.Mount;
 using AynThorManager.Services.Streaming;
 using AynThorManager.Services.Telemetry;
 
@@ -11,14 +12,13 @@ namespace AynThorManager.Desktop;
 public partial class MainWindow : Window
 {
     private DeviceConnection _device = null!;
-    private IFileStorageService _fileService = null!;
     private DirectConnectionService _directConnection = null!;
     private NetworkMonitor _networkMonitor = null!;
     private StreamingService _streaming = null!;
     private ReverseStreamingService _reverseStreaming = null!;
+    private ThorMountService _thorMount = null!;
     private IConnectionSettingsStore _connectionSettings = null!;
     private ISecretStore _secrets = null!;
-    private string _currentPath = "/storage/";
 
     /// <summary>Keyring key under which the hotspot Wi-Fi password is stored.</summary>
     private const string HotspotPasswordKey = "hotspot-password";
@@ -30,8 +30,6 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Closing += MainWindow_Closing;
-
-        SetupFileDragDrop();
 
         // Resolving which adb to use probes the filesystem and runs "adb mdns check",
         // which starts the adb server (several seconds on a cold start). Doing that in
@@ -49,11 +47,11 @@ public partial class MainWindow : Window
         var services = await AppServices.CreateAsync();
 
         _device = services.Device;
-        _fileService = services.FileService;
         _directConnection = services.DirectConnection;
         _networkMonitor = services.NetworkMonitor;
         _streaming = services.Streaming;
         _reverseStreaming = services.ReverseStreaming;
+        _thorMount = services.ThorMount;
         _connectionSettings = services.ConnectionSettings;
         _secrets = services.Secrets;
 
@@ -69,8 +67,16 @@ public partial class MainWindow : Window
         // on the UI thread already.
         _reverseStreaming.StateChanged += s => Dispatcher.UIThread.Post(() => OnReverseStateChanged(s));
 
-        // Reflect the initial action availability for the current direction.
+        // Req 1/3: the mount status drives the "Abrir arquivos do Thor" button state.
+        // ThorMountService raises StateChanged from background threads — the device's
+        // StateChanged (command queue) can trigger an unmount, and the unmount itself may
+        // run off the UI thread — so marshal onto the Dispatcher before touching controls.
+        _thorMount.StateChanged += s => Dispatcher.UIThread.Post(() => OnMountStateChanged(s));
+
+        // Reflect the initial action availability for the current direction, and the
+        // initial mount-button state (unavailable until a Thor is connected).
         UpdateActionAvailability();
+        UpdateMountAvailability();
 
         // Pre-fill the last-used hotspot SSID/password so the user doesn't retype them.
         // The SSID comes from the config file; the password from the system keyring.
@@ -124,46 +130,23 @@ public partial class MainWindow : Window
             // Best-effort cleanup on shutdown: swallow so the window still closes. There
             // is nothing left to recover to and the Desktop layer has no real logger.
         }
-    }
 
-    private static string FormatSize(long bytes)
-    {
-        if (bytes == 0) return "-";
-        string[] units = ["B", "KB", "MB", "GB"];
-        var i = (int)Math.Floor(Math.Log(bytes, 1024));
-        return $"{bytes / Math.Pow(1024, i):F1} {units[i]}";
-    }
-
-    private static string FormatDate(DateTimeOffset when) =>
-        when == DateTimeOffset.MinValue ? "" : when.ToLocalTime().ToString("dd/MM/yy HH:mm");
-}
-
-public class FileItem
-{
-    public string Icon { get; set; } = "";
-    public string Name { get; set; } = "";
-    public string Size { get; set; } = "";
-    public string Modified { get; set; } = "";
-    public bool IsDirectory { get; set; }
-    public string FullPath { get; set; } = "";
-
-    public static string IconFor(string name, bool isDirectory)
-    {
-        if (isDirectory) return "📁";
-
-        var ext = System.IO.Path.GetExtension(name).ToLowerInvariant();
-        return ext switch
+        // Req 3.2: unmount whatever the app mounted so no FUSE mount is left orphaned
+        // behind the closed window, then detach the device subscription via Dispose. The
+        // await completes the unmount before the window tears down. Guarded so a failure
+        // on shutdown can never block the close or escape this async-void handler, and
+        // null-guarded for a close during startup before the backend finished wiring.
+        try
         {
-            ".apk" or ".xapk" => "📦",
-            ".zip" or ".rar" or ".7z" or ".gz" or ".tar" => "🗂️",
-            ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".bmp" => "🖼️",
-            ".mp4" or ".mkv" or ".avi" or ".mov" or ".webm" => "🎬",
-            ".mp3" or ".wav" or ".flac" or ".ogg" or ".m4a" => "🎵",
-            ".pdf" => "📕",
-            ".txt" or ".md" or ".log" or ".json" or ".xml" or ".ini" or ".cfg" => "📄",
-            ".iso" or ".bin" or ".img" => "💿",
-            ".sav" or ".srm" or ".state" => "🎮",
-            _ => "📄",
-        };
+            if (_thorMount is not null)
+            {
+                await _thorMount.UnmountAsync();
+                _thorMount.Dispose();
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup on shutdown: swallow so the window still closes.
+        }
     }
 }

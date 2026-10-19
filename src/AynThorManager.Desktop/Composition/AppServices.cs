@@ -1,11 +1,13 @@
 using AynThorManager.Core.Interfaces;
 using AynThorManager.Infrastructure.Adb;
+using AynThorManager.Infrastructure.Files;
+using AynThorManager.Infrastructure.Mount;
 using AynThorManager.Infrastructure.Network;
 using AynThorManager.Infrastructure.Streaming;
 using AynThorManager.Infrastructure.Settings;
 using AynThorManager.Services.Adb;
 using AynThorManager.Services.Connection;
-using AynThorManager.Services.FileStorage;
+using AynThorManager.Services.Mount;
 using AynThorManager.Services.Streaming;
 using AynThorManager.Services.Telemetry;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,30 +23,30 @@ namespace AynThorManager.Desktop.Composition;
 public sealed class AppServices
 {
     public DeviceConnection Device { get; }
-    public IFileStorageService FileService { get; }
     public DirectConnectionService DirectConnection { get; }
     public NetworkMonitor NetworkMonitor { get; }
     public StreamingService Streaming { get; }
     public ReverseStreamingService ReverseStreaming { get; }
+    public ThorMountService ThorMount { get; }
     public IConnectionSettingsStore ConnectionSettings { get; }
     public ISecretStore Secrets { get; }
 
     private AppServices(
         DeviceConnection device,
-        IFileStorageService fileService,
         DirectConnectionService directConnection,
         NetworkMonitor networkMonitor,
         StreamingService streaming,
         ReverseStreamingService reverseStreaming,
+        ThorMountService thorMount,
         IConnectionSettingsStore connectionSettings,
         ISecretStore secrets)
     {
         Device = device;
-        FileService = fileService;
         DirectConnection = directConnection;
         NetworkMonitor = networkMonitor;
         Streaming = streaming;
         ReverseStreaming = reverseStreaming;
+        ThorMount = thorMount;
         ConnectionSettings = connectionSettings;
         Secrets = secrets;
     }
@@ -62,7 +64,6 @@ public sealed class AppServices
         var queue = new CommandQueue(executor, NullLogger<CommandQueue>.Instance);
         var device = new DeviceConnection(queue, NullLogger<DeviceConnection>.Instance);
 
-        var fileService = new FileStorageService(device, NullLogger<FileStorageService>.Instance);
         var directConnection = new DirectConnectionService(
             device, new WifiConnectionService(), NullLogger<DirectConnectionService>.Instance);
         var networkMonitor = new NetworkMonitor(device, NullLogger<NetworkMonitor>.Instance);
@@ -83,13 +84,50 @@ public sealed class AppServices
             new SunshineHost(),
             NullLogger<ReverseStreamingService>.Instance);
 
+        // Thor filesystem mount (native FUSE→ADB, no third-party adbfs binary). The mount
+        // is built from a chain of leaves owned top-down by ThorFuseMount:
+        //   ActiveDeviceAdbFileGateway → FileCache → ThorFuseFilesystem → ThorFuseMount
+        //
+        // Composition note — binding the gateway to the active serial:
+        // AdbFileGateway is bound to ONE device serial for life and demands it at
+        // construction, but this whole graph is built at startup when no Thor is connected
+        // yet. The serial only becomes known at mount time (DeviceConnection.Current
+        // .Serial), which ThorMountService reads just before IThorMount.MountAsync(serial).
+        // ThorFuseMount.MountAsync only validates that serial; it does not re-plumb the
+        // gateway. So the gateway must already target the active device by the time FUSE
+        // first touches it — which is only after a mount, i.e. only after a device is
+        // connected. ActiveDeviceAdbFileGateway resolves the serial lazily, on the first
+        // file operation, from the live DeviceConnection and builds the real
+        // AdbFileGateway bound to it then. This solves the serial-binding timing entirely
+        // in the composition/Infrastructure layer, leaving the Core contracts and the
+        // Services orchestrator untouched. The shared `executor` is reused so file
+        // operations go through the same adb path as the rest of the app (Req 5.3).
+        var fileGateway = new ActiveDeviceAdbFileGateway(executor, () => device.Current?.Serial);
+        var fileCache = new FileCache(fileGateway);
+        var fuseFilesystem = new ThorFuseFilesystem(fileGateway, fileCache);
+        var fuseMount = new ThorFuseMount(fuseFilesystem, fileCache);
+
+        // FuseMountPrerequisites checks only FUSE (fusermount/fusermount3) now — there is
+        // no adbfs binary to look for. Unlike the old AdbfsMount, the mount (IThorMount)
+        // and the prerequisites (IMountPrerequisites) are two separate objects, so each is
+        // constructed independently and handed to the orchestrator. The orchestrator owns
+        // the DeviceConnection subscription and is IDisposable; the window disposes it on
+        // close (after unmounting) so no mount is left orphaned (Req 3.2/4.2).
+        var thorMount = new ThorMountService(
+            device,
+            new FuseMountPrerequisites(),
+            fuseMount,
+            new GtkBookmark(),
+            new FileManagerLauncher(),
+            NullLogger<ThorMountService>.Instance);
+
         // Persisted hotspot preferences: SSID in a config file, password in the
         // system keyring (best-effort — degrades cleanly without a keyring backend).
         var connectionSettings = new ConnectionSettingsStore();
         var secrets = new SecretToolStore();
 
         return new AppServices(
-            device, fileService, directConnection, networkMonitor, streaming, reverseStreaming,
-            connectionSettings, secrets);
+            device, directConnection, networkMonitor, streaming, reverseStreaming,
+            thorMount, connectionSettings, secrets);
     }
 }

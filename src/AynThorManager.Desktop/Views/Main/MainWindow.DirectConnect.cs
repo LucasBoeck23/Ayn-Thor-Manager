@@ -30,7 +30,7 @@ public partial class MainWindow
 
             BtnDirectConnect.IsVisible = false;
             BtnDirectStop.IsVisible = true;
-            await HandleDiscoverResult(result);
+            HandleDiscoverResult(result);
         }
         finally
         {
@@ -44,7 +44,7 @@ public partial class MainWindow
         try
         {
             var result = await _directConnection.DiscoverAndConnectAsync(default);
-            await HandleDiscoverResult(result);
+            HandleDiscoverResult(result);
         }
         finally
         {
@@ -68,11 +68,11 @@ public partial class MainWindow
         BtnDirectRetry.IsVisible = false;
     }
 
-    private async Task HandleDiscoverResult(Core.Models.Result<AynThorManager.Services.Connection.ThorDevice> result)
+    private void HandleDiscoverResult(Core.Models.Result<AynThorManager.Services.Connection.ThorDevice> result)
     {
         if (result.IsSuccess)
         {
-            await ShowConnectResult(result);
+            ShowConnectResult(result);
             BtnDirectRetry.IsVisible = false;
         }
         else

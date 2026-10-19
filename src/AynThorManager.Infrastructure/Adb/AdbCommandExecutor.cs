@@ -16,8 +16,16 @@ public sealed class AdbCommandExecutor(
 {
     private readonly string _adbPath = options.Value.AdbPath;
 
-    public async Task<CommandResult> ExecuteAsync(string arguments, TimeSpan timeout, CancellationToken ct)
+    public Task<CommandResult> ExecuteAsync(IReadOnlyList<string> arguments, TimeSpan timeout, CancellationToken ct) =>
+        RunAsync(cmd => cmd.WithArguments(arguments), string.Join(' ', arguments), timeout, ct);
+
+    public Task<CommandResult> ExecuteAsync(string arguments, TimeSpan timeout, CancellationToken ct) =>
+        RunAsync(cmd => cmd.WithArguments(arguments), arguments, timeout, ct);
+
+    private async Task<CommandResult> RunAsync(
+        Func<Command, Command> configure, string label, TimeSpan timeout, CancellationToken ct)
     {
+        var arguments = label;
         logger.LogDebug("ADB: {Arguments} (timeout: {Timeout})", arguments, timeout);
 
         var stopwatch = Stopwatch.StartNew();
@@ -27,8 +35,7 @@ public sealed class AdbCommandExecutor(
 
         try
         {
-            var result = await Cli.Wrap(_adbPath)
-                .WithArguments(arguments)
+            var result = await configure(Cli.Wrap(_adbPath))
                 .WithValidation(CommandResultValidation.None)
                 .ExecuteBufferedAsync(linkedCts.Token);
 

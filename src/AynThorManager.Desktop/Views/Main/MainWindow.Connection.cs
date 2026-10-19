@@ -11,7 +11,7 @@ public partial class MainWindow
     private static readonly IBrush AccentBrush = SolidColorBrush.Parse("#00d4ff");
     private static readonly IBrush SecondaryBrush = SolidColorBrush.Parse("#78909c");
 
-    private async Task ShowConnectResult(Result<ThorDevice> result)
+    private void ShowConnectResult(Result<ThorDevice> result)
     {
         if (!result.IsSuccess)
         {
@@ -20,9 +20,6 @@ public partial class MainWindow
         }
 
         ConnMessage.Text = "Conectado!";
-
-        _currentPath = "/storage/";
-        await LoadDirectory();
     }
 
     private void OnDeviceChanged(ThorDevice? device)
@@ -34,6 +31,8 @@ public partial class MainWindow
             StopNetStats();
             // Req 1.5: the PC→Thor action becomes unavailable without a Thor connected.
             UpdateActionAvailability();
+            // Req 2.3: the "Abrir arquivos do Thor" action is also unavailable now.
+            UpdateMountAvailability();
             return;
         }
 
@@ -42,5 +41,7 @@ public partial class MainWindow
         StartNetStats();
         // Req 1.5: re-enable the PC→Thor action now that a Thor is connected.
         UpdateActionAvailability();
+        // Req 2.3: re-enable the "Abrir arquivos do Thor" action now that a Thor is connected.
+        UpdateMountAvailability();
     }
 }

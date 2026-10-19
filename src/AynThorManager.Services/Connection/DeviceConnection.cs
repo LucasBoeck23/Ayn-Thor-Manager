@@ -101,7 +101,7 @@ public sealed class DeviceConnection(
             if (attempt > 0)
                 await Task.Delay(_pollInterval, ct);
 
-            entry = (await ListDevicesAsync(ct)).FirstOrDefault(d => d.Serial == target);
+            entry = PickForSerial(await ListDevicesAsync(ct), target);
             if (entry is { IsReady: true } or { State: "unauthorized" })
                 break;
         }
@@ -138,6 +138,26 @@ public sealed class DeviceConnection(
 
     private Task<Result<CommandResult>> RawAsync(string arguments, TimeSpan timeout, CancellationToken ct) =>
         queue.EnqueueAsync(new AdbCommand(arguments, timeout, arguments), ct);
+
+    /// <summary>
+    /// Picks a single, stable entry for a serial when <c>adb devices</c> lists the same
+    /// Thor more than once (e.g. a stale <c>offline</c> alongside the live <c>device</c>).
+    /// Prefers the ready (<c>device</c>) entry, then an <c>unauthorized</c> one, and only
+    /// then anything else — so a leftover offline duplicate never wins the selection and
+    /// we never command the wrong target (Req 5.2). Ties keep adb's listing order.
+    /// </summary>
+    private static AdbDeviceEntry? PickForSerial(IReadOnlyList<AdbDeviceEntry> devices, string serial) =>
+        devices
+            .Where(d => d.Serial == serial)
+            .OrderBy(StatePriority)
+            .FirstOrDefault();
+
+    private static int StatePriority(AdbDeviceEntry entry) => entry switch
+    {
+        { IsReady: true } => 0,
+        { State: "unauthorized" } => 1,
+        _ => 2,
+    };
 
     private Result<ThorDevice> Adopt(AdbDeviceEntry entry)
     {

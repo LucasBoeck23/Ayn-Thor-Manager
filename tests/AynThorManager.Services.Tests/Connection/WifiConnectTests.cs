@@ -141,6 +141,38 @@ public class WifiConnectTests
     }
 
     [Fact]
+    public async Task Prefers_the_active_entry_over_a_duplicate_offline_of_the_same_thor()
+    {
+        // Req 5.2: adb lists the same Thor twice — a stale offline and the live device.
+        // The offline duplicate must never win the selection, regardless of its position.
+        _adb.On($"connect {WifiSerial}", AlreadyConnected(WifiSerial))
+            .On("devices -l", Devices(
+                WifiLine(WifiSerial, "offline"),
+                WifiLine(WifiSerial)));
+
+        var result = await _connection.ConnectAsync(WifiSerial, default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(WifiSerial, result.Value!.Serial);
+        Assert.Equal(1, _adb.CountOf("devices -l")); // the ready entry is found on the first listing
+    }
+
+    [Fact]
+    public async Task Duplicate_offline_entries_do_not_mask_a_ready_thor()
+    {
+        // Same as above but with the live device listed first, then the stale offline.
+        _adb.On($"connect {WifiSerial}", AlreadyConnected(WifiSerial))
+            .On("devices -l", Devices(
+                WifiLine(WifiSerial),
+                WifiLine(WifiSerial, "offline")));
+
+        var result = await _connection.ConnectAsync(WifiSerial, default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(WifiSerial, result.Value!.Serial);
+    }
+
+    [Fact]
     public async Task Waits_for_the_device_to_become_ready_after_connect()
     {
         // adb lists the endpoint as offline for a moment right after connecting.

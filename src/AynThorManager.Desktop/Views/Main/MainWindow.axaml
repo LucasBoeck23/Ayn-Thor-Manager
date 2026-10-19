@@ -76,65 +76,6 @@
                         </Grid>
                     </Border>
 
-                    <Border DockPanel.Dock="Top" Padding="8" BorderBrush="#0f3460" BorderThickness="0,0,0,1">
-                        <StackPanel Spacing="8">
-                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                                <Button Grid.Column="0" Content="⬆" Click="BtnUp_Click" Classes="btn icon"
-                                        ToolTip.Tip="Pasta acima" />
-                                <Border Grid.Column="1" Background="#0e1a30" CornerRadius="3" Margin="8,0" Padding="8,0"
-                                        VerticalAlignment="Stretch">
-                                    <TextBlock x:Name="PathDisplay" Text="/storage/" VerticalAlignment="Center"
-                                               FontFamily="monospace" FontSize="11" Foreground="#00d4ff"
-                                               TextTrimming="CharacterEllipsis" />
-                                </Border>
-                                <Button Grid.Column="2" Content="⟳" Click="BtnRefresh_Click" Classes="btn icon"
-                                        Margin="0,0,4,0" ToolTip.Tip="Atualizar" />
-                                <Button Grid.Column="3" Content="＋" Classes="btn primary icon" ToolTip.Tip="Adicionar">
-                                    <Button.Flyout>
-                                        <MenuFlyout>
-                                            <MenuItem Header="📁 Nova pasta" Click="BtnNewFolder_Click" />
-                                            <MenuItem Header="📄 Novo documento" Click="BtnNewFile_Click" />
-                                            <MenuItem Header="⬆️ Enviar arquivo..." Click="BtnUpload_Click" />
-                                        </MenuFlyout>
-                                    </Button.Flyout>
-                                </Button>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <TextBlock x:Name="EmptyHint" DockPanel.Dock="Top"
-                               Text="Pasta vazia&#x0a;Arraste arquivos aqui para enviar"
-                               Foreground="#546e7a" FontSize="12" FontStyle="Italic" TextAlignment="Center"
-                               HorizontalAlignment="Center" Margin="0,24,0,0" IsVisible="False" />
-
-                    <ListBox x:Name="FileList" Classes="files" Background="Transparent" BorderThickness="0"
-                             Foreground="#e0e0e0" FontSize="12"
-                             DragDrop.AllowDrop="True"
-                             DoubleTapped="FileList_DoubleTapped">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate x:DataType="local:FileItem">
-                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,4" VerticalAlignment="Center">
-                                    <TextBlock Grid.Column="0" Text="{Binding Icon}" FontSize="15" Width="26"
-                                               VerticalAlignment="Center" />
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Name}" Foreground="#e0e0e0"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding Modified}" Foreground="#546e7a" FontSize="9"
-                                                   IsVisible="{Binding Modified, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="2" Text="{Binding Size}" Margin="8,0,4,0"
-                                               Foreground="#78909c" FontSize="10" VerticalAlignment="Center" />
-
-                                    <Grid.ContextMenu>
-                                        <ContextMenu>
-                                            <MenuItem Header="✏️ Renomear" Click="BtnRename_Click" />
-                                            <MenuItem Header="🗑️ Excluir" Click="BtnDelete_Click" />
-                                        </ContextMenu>
-                                    </Grid.ContextMenu>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
                 </DockPanel>
             </DockPanel>
         </Border>
@@ -170,6 +111,16 @@
                             Padding="10,4" Margin="12,0,0,0" VerticalAlignment="Center"
                             IsVisible="False"
                             ToolTip.Tip="Abre o painel do Sunshine no navegador" />
+
+                    <!-- Abrir arquivos do Thor (Req 1): monta o Thor via FUSE nativo e abre
+                         no gerenciador de arquivos nativo. Habilitado só com o Thor conectado
+                         (Req 2.3); o rótulo/estado reflete o MountStatus (indisponível sem
+                         Thor, montando, montado, erro). -->
+                    <Button x:Name="BtnOpenThorFiles" Content="📂 Abrir arquivos do Thor"
+                            Click="BtnOpenThorFiles_Click" Classes="btn default"
+                            Margin="12,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock x:Name="MountStatusText" Text="" VerticalAlignment="Center"
+                               Margin="8,0,0,0" FontSize="11" Foreground="#78909c" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 
@@ -216,6 +167,52 @@
                                        HorizontalAlignment="Center" TextAlignment="Center" />
 
                             <ItemsControl x:Name="PrereqList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:PrereqItem">
+                                        <Border Background="#16213e" BorderBrush="#0f3460" BorderThickness="1"
+                                                CornerRadius="4" Padding="12" Margin="0,0,0,8">
+                                            <StackPanel Spacing="4">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="⚠" Foreground="#ff5252" FontSize="13"
+                                                               VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding Name}" Foreground="#e0e0e0"
+                                                               FontSize="13" FontWeight="Bold"
+                                                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Guidance}" Foreground="#78909c"
+                                                           FontSize="11" TextWrapping="Wrap"
+                                                           IsVisible="{Binding Guidance, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                <Button Content="Abrir link"
+                                                        Click="PrereqLink_Click"
+                                                        Tag="{Binding Url}"
+                                                        Classes="btn primary" FontSize="11" Padding="10,4"
+                                                        HorizontalAlignment="Left" Margin="0,2,0,0"
+                                                        IsVisible="{Binding HasUrl}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Fluxo guiado quando falta o FUSE (Req 2.2). Só os itens que faltam
+                         são listados, cada um com a orientação de como obter (pacote da
+                         distro) e um link oficial quando houver. O app apenas orienta —
+                         nunca instala nada. Reaproveita o row template de PrereqItem usado
+                         no fluxo PC→Thor. -->
+                    <Border x:Name="MountPrereqPanel" IsVisible="False" Padding="24"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            MaxWidth="520">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="Pré-requisitos para abrir os arquivos do Thor"
+                                       Foreground="#00d4ff" FontSize="15" FontWeight="Bold"
+                                       HorizontalAlignment="Center" TextAlignment="Center" />
+                            <TextBlock Text="Resolva os itens abaixo e tente de novo. O app não instala nada por você — só orienta."
+                                       Foreground="#78909c" FontSize="11" TextWrapping="Wrap"
+                                       HorizontalAlignment="Center" TextAlignment="Center" />
+
+                            <ItemsControl x:Name="MountPrereqList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="local:PrereqItem">
                                         <Border Background="#16213e" BorderBrush="#0f3460" BorderThickness="1"
