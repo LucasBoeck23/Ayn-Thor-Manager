@@ -63,7 +63,7 @@ public sealed class DeviceConnection(
     {
         var target = (address ?? "").Trim();
         if (target.Length == 0)
-            return Fail("INVALID_ADDRESS", "Digite o IP do Thor.");
+            return Fail("INVALID_ADDRESS", "Endereço do Thor não informado pela descoberta.");
 
         if (!target.Contains(':'))
             target += $":{DefaultAdbPort}";
@@ -74,7 +74,7 @@ public sealed class DeviceConnection(
 
         if (target.EndsWith($":{CompanionPort}"))
             return Fail("COMPANION_PORT",
-                "A porta 7100 é do Ayn Thor Link, não do ADB. Use a porta mostrada em 'Depuração sem fio' no Thor.");
+                "A porta 7100 é do Ayn Thor Link, não do ADB.");
 
         var connect = await RawAsync($"connect {target}", ConnectTimeout, ct);
         if (!connect.IsSuccess || connect.Value is null)
@@ -106,7 +106,7 @@ public sealed class DeviceConnection(
         if (entry is { State: "unauthorized" })
             return Fail("UNAUTHORIZED", "O Thor recusou a conexão. Aceite o pedido de depuração na tela do Thor e tente de novo.");
 
-        return Fail("CONNECTION_FAILED", $"Não foi possível conectar em {target}. Confira o IP e a porta em 'Depuração sem fio' no Thor.");
+        return Fail("CONNECTION_FAILED", $"Não foi possível conectar ao Thor em {target}. Verifique se ele está na mesma rede e tente de novo.");
     }
 
     public async Task<Result<CommandResult>> RunAsync(string arguments, TimeSpan timeout, CancellationToken ct)

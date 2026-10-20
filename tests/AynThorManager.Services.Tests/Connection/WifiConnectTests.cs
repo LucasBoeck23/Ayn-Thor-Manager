@@ -54,7 +54,7 @@ public class WifiConnectTests
         var result = await _connection.ConnectAsync("192.168.1.17:7100", default);
 
         Assert.Equal("COMPANION_PORT", result.Error!.Code);
-        Assert.Contains("Depuração sem fio", result.Error.Message);
+        Assert.Contains("7100", result.Error.Message);
         Assert.Empty(_adb.Calls);
     }
 
