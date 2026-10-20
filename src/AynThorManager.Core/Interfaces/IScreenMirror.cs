@@ -6,7 +6,7 @@ public interface IScreenMirror
 
     event Action? Exited;
 
-    void Start(string arguments);
+    void Start(IReadOnlyList<string> instances);
 
     void Stop();
 }

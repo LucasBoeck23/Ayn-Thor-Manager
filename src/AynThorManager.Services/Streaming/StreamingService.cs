@@ -18,6 +18,9 @@ public sealed class StreamingService(
     private const int BitrateMbps = 24;
     private const int MaxFps = 120;
 
+    private const string AudioSource = "output";
+    private const int AudioBufferMs = 50;
+
     public bool IsRunning => mirror.IsRunning;
 
     public event Action? Exited
@@ -41,7 +44,7 @@ public sealed class StreamingService(
 
         try
         {
-            mirror.Start(args);
+            mirror.Start([args]);
             return Result.Success();
         }
         catch (Exception ex)
@@ -57,7 +60,9 @@ public sealed class StreamingService(
     private static string BuildArgs(string serial, int buffer) =>
         $"-s {serial} --keyboard=uhid --mouse=sdk --gamepad=uhid " +
         $"--video-codec={Codec} --video-bit-rate={BitrateMbps}M --max-fps={MaxFps} " +
-        $"--video-buffer={buffer} --no-audio --window-title=\"AYN Thor\"";
+        $"--video-buffer={buffer} --audio-source={AudioSource} --audio-buffer={AudioBufferMs} " +
+        $"--disable-screensaver --window-title=\"AYN Thor\"";
+
 
     private async Task<int> PickAdaptiveBufferAsync(CancellationToken ct)
     {

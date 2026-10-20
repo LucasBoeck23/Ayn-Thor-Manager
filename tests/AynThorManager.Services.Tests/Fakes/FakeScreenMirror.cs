@@ -11,9 +11,9 @@ internal sealed class FakeScreenMirror : IScreenMirror
 
     public event Action? Exited;
 
-    public void Start(string arguments)
+    public void Start(IReadOnlyList<string> instances)
     {
-        StartArgs.Add(arguments);
+        StartArgs.AddRange(instances);
         IsRunning = true;
     }
 
