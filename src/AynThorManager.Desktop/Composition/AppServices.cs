@@ -23,7 +23,6 @@ public sealed class AppServices
     public StreamingService Streaming { get; }
     public ReverseStreamingService ReverseStreaming { get; }
     public ThorMountService ThorMount { get; }
-    public IConnectionSettingsStore ConnectionSettings { get; }
     public ISecretStore Secrets { get; }
 
     private AppServices(
@@ -33,7 +32,6 @@ public sealed class AppServices
         StreamingService streaming,
         ReverseStreamingService reverseStreaming,
         ThorMountService thorMount,
-        IConnectionSettingsStore connectionSettings,
         ISecretStore secrets)
     {
         Device = device;
@@ -42,7 +40,6 @@ public sealed class AppServices
         Streaming = streaming;
         ReverseStreaming = reverseStreaming;
         ThorMount = thorMount;
-        ConnectionSettings = connectionSettings;
         Secrets = secrets;
     }
 
@@ -83,11 +80,10 @@ public sealed class AppServices
             new FileManagerLauncher(),
             NullLogger<ThorMountService>.Instance);
 
-        var connectionSettings = new ConnectionSettingsStore();
         var secrets = new SecretToolStore();
 
         return new AppServices(
             device, directConnection, networkMonitor, streaming, reverseStreaming,
-            thorMount, connectionSettings, secrets);
+            thorMount, secrets);
     }
 }

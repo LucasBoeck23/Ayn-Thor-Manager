@@ -17,9 +17,9 @@ public partial class MainWindow : Window
     private StreamingService _streaming = null!;
     private ReverseStreamingService _reverseStreaming = null!;
     private ThorMountService _thorMount = null!;
-    private IConnectionSettingsStore _connectionSettings = null!;
     private ISecretStore _secrets = null!;
 
+    private const string HotspotSsidKey = "hotspot-ssid";
     private const string HotspotPasswordKey = "hotspot-password";
 
     private StreamDirection _direction = StreamDirection.ThorToPc;
@@ -44,7 +44,6 @@ public partial class MainWindow : Window
         _streaming = services.Streaming;
         _reverseStreaming = services.ReverseStreaming;
         _thorMount = services.ThorMount;
-        _connectionSettings = services.ConnectionSettings;
         _secrets = services.Secrets;
 
         _device.StateChanged += d => Dispatcher.UIThread.Post(() => OnDeviceChanged(d));
@@ -62,9 +61,9 @@ public partial class MainWindow : Window
 
     private async Task PrefillSavedConnectionAsync()
     {
-        var settings = await _connectionSettings.LoadAsync();
-        if (!string.IsNullOrWhiteSpace(settings.LastSsid))
-            TxtThorSsid.Text = settings.LastSsid;
+        var ssid = await _secrets.GetAsync(HotspotSsidKey);
+        if (!string.IsNullOrWhiteSpace(ssid))
+            TxtThorSsid.Text = ssid;
 
         var password = await _secrets.GetAsync(HotspotPasswordKey);
         if (!string.IsNullOrEmpty(password))
@@ -73,7 +72,11 @@ public partial class MainWindow : Window
 
     private async Task SaveConnectionAsync(string ssid, string password)
     {
-        await _connectionSettings.SaveAsync(new Core.Models.ConnectionSettings(ssid));
+        if (string.IsNullOrWhiteSpace(ssid))
+            await _secrets.DeleteAsync(HotspotSsidKey);
+        else
+            await _secrets.SetAsync(HotspotSsidKey, ssid);
+
         if (string.IsNullOrEmpty(password))
             await _secrets.DeleteAsync(HotspotPasswordKey);
         else
