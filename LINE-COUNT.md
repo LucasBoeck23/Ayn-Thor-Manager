@@ -9,20 +9,20 @@ Gerado por `scripts/count-lines.sh` (conta `.cs` + `.axaml` em `src/`, ignora `b
 
 | Solution | Arquivos | Bruto | So-codigo |
 |---|---:|---:|---:|
-| Infrastructure | 21 | 2329 | 1897 |
+| Infrastructure | 21 | 2404 | 1959 |
 | Desktop | 12 | 1170 | 1000 |
 | Services | 10 | 1037 | 846 |
-| Core | 26 | 509 | 400 |
-| **TOTAL** | **69** | **5045** | **4143** |
+| Core | 23 | 362 | 280 |
+| **TOTAL** | **66** | **4973** | **4085** |
 
 ---
 
-## AynThorManager.Infrastructure — 2329 / 1897 (21 arquivos)
+## AynThorManager.Infrastructure — 2404 / 1959 (21 arquivos)
 
 | Arquivo | Bruto | So-codigo |
 |---|---:|---:|
-| Mount/ThorFuseFilesystem.cs | 373 | 314 |
-| Mount/LibFuseInterop.cs | 326 | 272 |
+| Mount/ThorFuseFilesystem.cs | 429 | 360 |
+| Mount/LibFuseInterop.cs | 345 | 288 |
 | Mount/ThorFuseMount.cs | 197 | 152 |
 | Files/FileCache.cs | 187 | 144 |
 | Streaming/SunshineHost.cs | 153 | 126 |
@@ -75,20 +75,17 @@ Gerado por `scripts/count-lines.sh` (conta `.cs` + `.axaml` em `src/`, ignora `b
 | Adb/CommandQueue.cs | 40 | 35 |
 | Connection/ThorDevice.cs | 9 | 7 |
 
-## AynThorManager.Core — 509 / 400 (26 arquivos)
+## AynThorManager.Core — 362 / 280 (23 arquivos)
 
 | Arquivo | Bruto | So-codigo |
 |---|---:|---:|
-| Validators/FileNameValidator.cs | 88 | 74 |
 | Validators/IpAddressValidator.cs | 59 | 46 |
-| Validators/PathValidator.cs | 43 | 32 |
 | Models/Result.cs | 33 | 27 |
 | Models/MountModels.cs | 31 | 25 |
 | Models/ReverseStreamModels.cs | 30 | 26 |
 | Helpers/AdbErrorParser.cs | 30 | 24 |
 | Interfaces/IAdbFileGateway.cs | 20 | 12 |
 | Models/ThorFileEntry.cs | 16 | 14 |
-| Helpers/PathHelper.cs | 16 | 14 |
 | Models/AdbModels.cs | 13 | 11 |
 | Interfaces/IThorMount.cs | 12 | 8 |
 | Interfaces/IScreenMirror.cs | 12 | 8 |
