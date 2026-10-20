@@ -4,17 +4,10 @@ using AynThorManager.Infrastructure.Files;
 
 namespace AynThorManager.Infrastructure.Tests.Files;
 
-/// <summary>
-/// Drives <see cref="AdbFileGateway"/> through a fake <see cref="IAdbCommandExecutor"/> so
-/// the command shapes (always targeting the active serial with <c>-s {serial}</c>, Req 5.3)
-/// and the mapping of ADB failures to clear <see cref="Result"/> errors are exercised
-/// without spawning real adb.
-/// </summary>
 public class AdbFileGatewayTests
 {
     private const string Serial = "192.168.1.5:5555";
 
-    /// <summary>Records every argument string passed to the executor and replays canned outputs.</summary>
     private sealed class FakeExecutor : IAdbCommandExecutor
     {
         private readonly CommandResult _result;
@@ -78,7 +71,6 @@ public class AdbFileGatewayTests
         var result = await gateway.PullAsync("/sdcard/a b.txt", "/tmp/cache/a b.txt");
 
         Assert.True(result.IsSuccess);
-        // push/pull pass literal path args (no shell quoting), one argv entry each.
         Assert.Contains($"-s {Serial} pull", executor.LastArguments);
         Assert.Contains("/sdcard/a b.txt", executor.LastArguments);
         Assert.Contains("/tmp/cache/a b.txt", executor.LastArguments);

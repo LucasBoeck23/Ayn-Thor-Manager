@@ -17,7 +17,7 @@ public static class AdbLocator
             firstExisting ??= path;
 
             if (await HasMdnsAsync(path, ct))
-                return path; 
+                return path;
         }
 
         return firstExisting ?? "adb";
@@ -31,12 +31,12 @@ public static class AdbLocator
         yield return Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "platform-tools", "adb");
-        yield return "adb"; 
+        yield return "adb";
     }
 
     private static async Task<bool> ExistsAsync(string path, CancellationToken ct)
     {
-        if (path == "adb") return true; 
+        if (path == "adb") return true;
         if (File.Exists(path)) return true;
         await Task.CompletedTask;
         return false;

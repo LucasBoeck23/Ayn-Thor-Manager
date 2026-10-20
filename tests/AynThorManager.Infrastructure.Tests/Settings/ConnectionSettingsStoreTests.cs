@@ -3,10 +3,6 @@ using AynThorManager.Infrastructure.Settings;
 
 namespace AynThorManager.Infrastructure.Tests.Settings;
 
-/// <summary>
-/// Round-trips the non-secret connection preferences through a temp file via the
-/// internal path seam, and checks the best-effort fallbacks (missing/corrupt file).
-/// </summary>
 public class ConnectionSettingsStoreTests : IDisposable
 {
     private readonly string _dir;
@@ -21,7 +17,7 @@ public class ConnectionSettingsStoreTests : IDisposable
     public void Dispose()
     {
         try { if (Directory.Exists(_dir)) Directory.Delete(_dir, recursive: true); }
-        catch { /* best-effort cleanup */ }
+        catch {  }
     }
 
     [Fact]
@@ -48,7 +44,6 @@ public class ConnectionSettingsStoreTests : IDisposable
     [Fact]
     public async Task Save_creates_the_parent_directory()
     {
-        // The config dir (~/.config/ayn-thor-manager) may not exist yet.
         Assert.False(Directory.Exists(_dir));
         var store = new ConnectionSettingsStore(_file);
 
@@ -77,6 +72,6 @@ public class ConnectionSettingsStoreTests : IDisposable
 
         var settings = await store.LoadAsync();
 
-        Assert.Null(settings.LastSsid); // no throw, just defaults
+        Assert.Null(settings.LastSsid);
     }
 }

@@ -5,7 +5,6 @@ using static AynThorManager.Services.Tests.Fakes.AdbOutputs;
 
 namespace AynThorManager.Services.Tests.Connection;
 
-/// <summary>Manual Wi-Fi connection: the user types ip or ip:port and clicks "Conectar".</summary>
 public class WifiConnectTests
 {
     private readonly FakeAdb _adb = new();
@@ -17,8 +16,6 @@ public class WifiConnectTests
         _connection = new DeviceConnection(_adb, NullLogger<DeviceConnection>.Instance, pollInterval: TimeSpan.Zero);
         _connection.StateChanged += _events.Add;
     }
-
-    // ---- input validation: nothing must reach adb ----
 
     [Theory]
     [InlineData("")]
@@ -85,8 +82,6 @@ public class WifiConnectTests
         Assert.Equal("192.168.1.17:5555", result.Value!.Serial);
     }
 
-    // ---- successful connections ----
-
     [Fact]
     public async Task First_connection_succeeds_and_notifies_the_ui()
     {
@@ -104,7 +99,6 @@ public class WifiConnectTests
     [Fact]
     public async Task Already_connected_endpoint_is_accepted_instead_of_blocking()
     {
-        // Bug 3.2: the old service answered "Já existe uma conexão ADB ativa".
         _adb.On($"connect {WifiSerial}", AlreadyConnected(WifiSerial))
             .On("devices -l", DevicesUsbAndWifi);
 
@@ -130,7 +124,6 @@ public class WifiConnectTests
     [Fact]
     public async Task Picks_the_exact_serial_when_usb_and_wifi_are_both_attached()
     {
-        // Real situation from the Thor: cable plugged and wireless debugging on.
         _adb.On($"connect {WifiSerial}", AlreadyConnected(WifiSerial))
             .On("devices -l", DevicesUsbAndWifi);
 
@@ -143,8 +136,6 @@ public class WifiConnectTests
     [Fact]
     public async Task Prefers_the_active_entry_over_a_duplicate_offline_of_the_same_thor()
     {
-        // Req 5.2: adb lists the same Thor twice — a stale offline and the live device.
-        // The offline duplicate must never win the selection, regardless of its position.
         _adb.On($"connect {WifiSerial}", AlreadyConnected(WifiSerial))
             .On("devices -l", Devices(
                 WifiLine(WifiSerial, "offline"),
@@ -154,13 +145,12 @@ public class WifiConnectTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(WifiSerial, result.Value!.Serial);
-        Assert.Equal(1, _adb.CountOf("devices -l")); // the ready entry is found on the first listing
+        Assert.Equal(1, _adb.CountOf("devices -l"));
     }
 
     [Fact]
     public async Task Duplicate_offline_entries_do_not_mask_a_ready_thor()
     {
-        // Same as above but with the live device listed first, then the stale offline.
         _adb.On($"connect {WifiSerial}", AlreadyConnected(WifiSerial))
             .On("devices -l", Devices(
                 WifiLine(WifiSerial),
@@ -175,7 +165,6 @@ public class WifiConnectTests
     [Fact]
     public async Task Waits_for_the_device_to_become_ready_after_connect()
     {
-        // adb lists the endpoint as offline for a moment right after connecting.
         _adb.On($"connect {WifiSerial}", ConnectedTo(WifiSerial))
             .On("devices -l", Devices(WifiLine(WifiSerial, "offline")))
             .On("devices -l", Devices(WifiLine(WifiSerial)));
@@ -186,25 +175,21 @@ public class WifiConnectTests
         Assert.Equal(2, _adb.CountOf("devices -l"));
     }
 
-    // ---- failures ----
-
     [Fact]
     public async Task Ip_that_does_not_exist_fails_fast()
     {
-        // recorded: adb connect 192.168.1.250:5555
         _adb.On("connect 192.168.1.250:5555", NoRouteToHost("192.168.1.250:5555"));
 
         var result = await _connection.ConnectAsync("192.168.1.250:5555", default);
 
         Assert.Equal("CONNECTION_FAILED", result.Error!.Code);
         Assert.Contains("No route to host", result.Error.Message);
-        Assert.Equal(0, _adb.CountOf("devices -l")); // no pointless polling
+        Assert.Equal(0, _adb.CountOf("devices -l"));
     }
 
     [Fact]
     public async Task Wrong_port_or_wireless_debugging_off_is_refused()
     {
-        // recorded: adb connect 192.168.1.17:5555 while the Thor listens on 43321
         _adb.On("connect 192.168.1.17:5555", ConnectionRefused("192.168.1.17:5555"));
 
         var result = await _connection.ConnectAsync("192.168.1.17:5555", default);
@@ -227,7 +212,6 @@ public class WifiConnectTests
     [Fact]
     public async Task Host_that_never_answers_reports_timeout_without_polling()
     {
-        // A firewalled IP makes adb hang until the executor's timeout fires.
         _adb.OnTimeout($"connect {WifiSerial}");
 
         var result = await _connection.ConnectAsync(WifiSerial, default);
@@ -239,7 +223,6 @@ public class WifiConnectTests
     [Fact]
     public async Task Already_connected_text_is_not_trusted_if_adb_does_not_list_the_device()
     {
-        // Bug 3.1: adb prints "already connected" even for endpoints that are dead.
         _adb.On($"connect {WifiSerial}", AlreadyConnected(WifiSerial))
             .On("devices -l", DevicesEmpty);
 
@@ -288,8 +271,6 @@ public class WifiConnectTests
     [Fact]
     public async Task Failed_attempt_keeps_the_device_already_in_use()
     {
-        // Establish a working connection first, then a failed connect to another
-        // endpoint must keep the device already in use.
         _adb.On($"connect {WifiSerial}", ConnectedTo(WifiSerial))
             .On("devices -l", Devices(WifiLine(WifiSerial)))
             .On("connect 192.168.1.250:5555", NoRouteToHost("192.168.1.250:5555"));

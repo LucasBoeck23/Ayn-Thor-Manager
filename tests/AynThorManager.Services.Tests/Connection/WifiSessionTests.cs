@@ -5,7 +5,6 @@ using static AynThorManager.Services.Tests.Fakes.AdbOutputs;
 
 namespace AynThorManager.Services.Tests.Connection;
 
-/// <summary>What happens while connected over Wi-Fi: commands, drops and disconnect.</summary>
 public class WifiSessionTests
 {
     private readonly FakeAdb _adb = new();
@@ -38,7 +37,6 @@ public class WifiSessionTests
     [Fact]
     public async Task Every_command_targets_the_exact_serial_including_the_random_port()
     {
-        // Bug 5.2/6.1: commands went without -s or with a forced :5555.
         await ConnectWifi();
         _adb.On($"-s {WifiSerial} shell echo ok", "ok\n");
 
@@ -57,7 +55,7 @@ public class WifiSessionTests
         await ConnectWifi();
         var stderr = kind switch
         {
-            "device-not-found" => DeviceNotFound(WifiSerial), // recorded
+            "device-not-found" => DeviceNotFound(WifiSerial),
             "device-offline" => DeviceOffline,
             _ => Closed
         };
@@ -87,7 +85,6 @@ public class WifiSessionTests
     [Fact]
     public async Task Shell_command_errors_do_not_count_as_a_drop()
     {
-        // recorded: adb -s 192.168.1.17:43321 shell ls /naoexiste
         await ConnectWifi();
         _adb.On($"-s {WifiSerial} shell ls /naoexiste", stderr: LsNoSuchFile, exitCode: 1);
 

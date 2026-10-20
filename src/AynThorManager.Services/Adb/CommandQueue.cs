@@ -4,11 +4,6 @@ using Microsoft.Extensions.Logging;
 
 namespace AynThorManager.Services.Adb;
 
-/// <summary>
-/// Throttles concurrent adb invocations so a burst of commands can't spawn an
-/// unbounded number of adb processes. Up to <see cref="MaxConcurrency"/> run at once;
-/// the rest wait.
-/// </summary>
 public sealed class CommandQueue(
     IAdbCommandExecutor executor,
     ILogger<CommandQueue> logger) : ICommandQueue, IDisposable

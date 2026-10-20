@@ -3,10 +3,6 @@ using AynThorManager.Core.Interfaces;
 
 namespace AynThorManager.Infrastructure.Streaming;
 
-/// <summary>
-/// Runs scrcpy as a child process. scrcpy opens its own window and handles the whole
-/// video + input stream over adb; this class only launches, tracks and kills it.
-/// </summary>
 public sealed class ScrcpyMirror : IScreenMirror
 {
     private const string Executable = "scrcpy";
@@ -62,7 +58,7 @@ public sealed class ScrcpyMirror : IScreenMirror
             if (!process.HasExited)
                 process.Kill(true);
         }
-        catch (InvalidOperationException) { /* already gone */ }
+        catch (InvalidOperationException) {  }
         finally
         {
             process.Dispose();

@@ -57,10 +57,10 @@ public class AdbOutputParserTests
         Assert.Equal(expected, new AdbDeviceEntry(serial, "device", null).Transport);
 
     [Theory]
-    [InlineData("adb: device '192.168.1.17:43321' not found\n", true)] // recorded
+    [InlineData("adb: device '192.168.1.17:43321' not found\n", true)]
     [InlineData("error: device offline\n", true)]
     [InlineData("error: closed\n", true)]
-    [InlineData("ls: /naoexiste: No such file or directory\n", false)] // recorded
+    [InlineData("ls: /naoexiste: No such file or directory\n", false)]
     [InlineData("Command timed out after 2 seconds", false)]
     [InlineData("", false)]
     public void Detects_when_adb_lost_the_device(string stderr, bool expected) =>

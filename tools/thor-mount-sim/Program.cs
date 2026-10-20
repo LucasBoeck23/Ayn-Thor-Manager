@@ -1,10 +1,3 @@
-// Harness de simulação: exercita a rotina de montagem FUSE->ADB passo a passo,
-// capturando o erro de cada etapa sem derrubar o processo. Não é teste automatizado;
-// é um "driver" para reproduzir o que o botão "Abrir arquivos do Thor" faz.
-//
-// Uso:
-//   dotnet run --project tools/thor-mount-sim -- [caminhoRemoto]
-// Ex.: dotnet run --project tools/thor-mount-sim -- /sdcard
 
 using AynThorManager.Core.Interfaces;
 using AynThorManager.Core.Models;
@@ -25,7 +18,6 @@ Step("0. Ambiente");
 Console.WriteLine($"  adb      : {adbPath}");
 Console.WriteLine($"  remote   : {remoteRoot}");
 
-// --- 1. adb + device -----------------------------------------------------------
 Step("1. Resolver device ativo (adb devices -l)");
 var options = Options.Create(new AdbOptions { AdbPath = adbPath });
 var executor = new AdbCommandExecutor(options, NullLogger<AdbCommandExecutor>.Instance);
@@ -47,7 +39,6 @@ try
 }
 catch (Exception ex) { Err($"adb falhou: {ex.Message}"); }
 
-// --- 2. Gateway (lazy ls) ------------------------------------------------------
 Step("2. Gateway: ls lazy via ADB");
 IAdbFileGateway gateway = new ActiveDeviceAdbFileGateway(executor, () => serial);
 try
@@ -58,7 +49,6 @@ try
 }
 catch (Exception ex) { Err($"exceção no ls: {ex.Message}"); }
 
-// --- 3. Mount FUSE -------------------------------------------------------------
 Step("3. Montar FUSE (ThorFuseMount.MountAsync)");
 var cache = new FileCache(gateway);
 var fs = new ThorFuseFilesystem(gateway, cache);
@@ -77,7 +67,6 @@ catch (Exception ex)
     if (ex.InnerException is { } inner) Err($"  inner: {inner.GetType().Name}: {inner.Message}");
 }
 
-// --- 4. Operações no ponto montado --------------------------------------------
 if (mounted && Environment.GetEnvironmentVariable("HOLD") == "1" && mount.MountPoint is { } holdMp)
 {
     var holdSecs = int.TryParse(Environment.GetEnvironmentVariable("HOLD_SECS"), out var hs) ? hs : 30;
@@ -90,7 +79,6 @@ if (mounted && mount.MountPoint is { } mp)
 {
     Step("4. Operações no mount (readdir / read / create / write / rename / delete)");
 
-    // readdir (lazy)
     string[] entries = [];
     try
     {
@@ -99,7 +87,6 @@ if (mounted && mount.MountPoint is { } mp)
     }
     catch (Exception ex) { Err($"readdir falhou: {ex.Message}"); }
 
-    // read (open -> pull -> ler do cache): pega o primeiro arquivo (não-dir) e lê o começo
     try
     {
         var firstFile = entries.FirstOrDefault(e => File.Exists(e));
@@ -114,7 +101,6 @@ if (mounted && mount.MountPoint is { } mp)
     }
     catch (Exception ex) { Err($"read falhou: {ex.Message}"); }
 
-    // create + write + flush (push no close)
     var probe = Path.Combine(mp, "thor-mount-sim-probe.txt");
     var payload = $"ayn-thor-mount-sim {DateTime.UtcNow:O}\n";
     try
@@ -124,7 +110,6 @@ if (mounted && mount.MountPoint is { } mp)
     }
     catch (Exception ex) { Err($"create/write falhou: {ex.Message}"); }
 
-    // read-back (confirma push de volta ao Thor): relê via mount
     try
     {
         var back = File.ReadAllText(probe);
@@ -133,7 +118,6 @@ if (mounted && mount.MountPoint is { } mp)
     }
     catch (Exception ex) { Err($"read-back falhou: {ex.Message}"); }
 
-    // rename
     var probe2 = Path.Combine(mp, "thor-mount-sim-probe-renamed.txt");
     try
     {
@@ -142,7 +126,6 @@ if (mounted && mount.MountPoint is { } mp)
     }
     catch (Exception ex) { Err($"rename falhou: {ex.Message}"); probe2 = probe; }
 
-    // delete
     try
     {
         File.Delete(probe2);
@@ -150,13 +133,10 @@ if (mounted && mount.MountPoint is { } mp)
     }
     catch (Exception ex) { Err($"delete falhou: {ex.Message}"); }
 
-    // bookmark (Req 1.5): o mount em si não adiciona; é o ThorMountService.
-    // Aqui só reportamos o arquivo de bookmarks para inspeção manual.
     var bm = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config/gtk-3.0/bookmarks");
     Console.WriteLine($"  [info] bookmarks file: {bm} (existe={File.Exists(bm)})");
 }
 
-// --- 5. Desmontar --------------------------------------------------------------
 Step("5. Desmontar");
 try
 {

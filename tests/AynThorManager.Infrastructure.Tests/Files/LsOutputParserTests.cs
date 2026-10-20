@@ -3,12 +3,6 @@ using AynThorManager.Infrastructure.Files;
 
 namespace AynThorManager.Infrastructure.Tests.Files;
 
-/// <summary>
-/// Drives <see cref="LsOutputParser"/> — the first unit-testable point of the ADB file
-/// gateway — with canned <c>ls -la</c> output, so the parsing rules (type char, permission
-/// string, size, mtime, name, and the skipping of headers and <c>.</c>/<c>..</c>) are
-/// exercised without touching ADB or the device.
-/// </summary>
 public class LsOutputParserTests
 {
     [Fact]
@@ -76,8 +70,6 @@ public class LsOutputParserTests
     [Fact]
     public void Non_numeric_size_falls_back_to_zero()
     {
-        // Special/device nodes can render size as "1, 3"; the parser must not throw and
-        // falls back to 0 rather than mis-reading a size.
         var entry = LsOutputParser.ParseLine(
             "crw-rw-rw- 1 root root 1, 3 2024-01-01 00:00 null");
 

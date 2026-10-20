@@ -4,12 +4,6 @@ using AynThorManager.Infrastructure.Files;
 
 namespace AynThorManager.Infrastructure.Tests.Files;
 
-/// <summary>
-/// Drives <see cref="FileCache"/> through a fake <see cref="IAdbFileGateway"/> and a
-/// disposable temp directory, exercising the two isolable parts — the remote→local path
-/// mapping and the dirty/flush bookkeeping (Req 2.2/2.3) — plus pull-once-on-open and
-/// delete-on-unmount (Req 4.4), without touching real adb or <c>/tmp</c> globally.
-/// </summary>
 public sealed class FileCacheTests : IDisposable
 {
     private readonly string _baseDir;
@@ -27,10 +21,9 @@ public sealed class FileCacheTests : IDisposable
             if (Directory.Exists(_baseDir))
                 Directory.Delete(_baseDir, recursive: true);
         }
-        catch { /* best-effort test cleanup */ }
+        catch {  }
     }
 
-    /// <summary>Records pull/push calls and replays canned outcomes; can create the pulled file.</summary>
     private sealed class FakeGateway : IAdbFileGateway
     {
         private readonly Result _pullResult;
@@ -85,8 +78,6 @@ public sealed class FileCacheTests : IDisposable
 
     private FileCache NewCache(FakeGateway gateway) => new(gateway, _baseDir);
 
-    // ---- path mapping ----
-
     [Fact]
     public void Cache_directory_is_created_under_the_base_temp_dir()
     {
@@ -123,7 +114,6 @@ public sealed class FileCacheTests : IDisposable
     {
         using var cache = NewCache(new FakeGateway());
 
-        // Slashes are escaped, so a deep remote path cannot climb out of the cache dir.
         var local = cache.LocalPathFor("/../../etc/passwd");
 
         Assert.Equal(cache.CacheDirectory, Path.GetDirectoryName(local));
@@ -136,8 +126,6 @@ public sealed class FileCacheTests : IDisposable
         using var cache = NewCache(new FakeGateway());
         Assert.Throws<ArgumentException>(() => cache.LocalPathFor("  "));
     }
-
-    // ---- pull-on-open (lazy) ----
 
     [Fact]
     public async Task EnsureCached_pulls_once_and_reuses_the_local_copy()
@@ -152,7 +140,7 @@ public sealed class FileCacheTests : IDisposable
         Assert.True(second.IsSuccess);
         Assert.Equal(first.Value, second.Value);
         Assert.True(cache.IsCached("/sdcard/a.txt"));
-        Assert.Equal(1, gateway.PullCount); // second open served from cache
+        Assert.Equal(1, gateway.PullCount);
     }
 
     [Fact]
@@ -168,8 +156,6 @@ public sealed class FileCacheTests : IDisposable
         Assert.False(cache.IsCached("/sdcard/a.txt"));
     }
 
-    // ---- dirty tracking / flush (Property 4) ----
-
     [Fact]
     public async Task A_freshly_pulled_file_is_not_dirty_and_flush_does_not_push()
     {
@@ -182,7 +168,7 @@ public sealed class FileCacheTests : IDisposable
         var flush = await cache.FlushAsync("/sdcard/a.txt");
 
         Assert.True(flush.IsSuccess);
-        Assert.Equal(0, gateway.PushCount); // not dirty => no push
+        Assert.Equal(0, gateway.PushCount);
     }
 
     [Fact]
@@ -201,7 +187,7 @@ public sealed class FileCacheTests : IDisposable
         Assert.Equal(1, gateway.PushCount);
         Assert.Equal("/sdcard/a.txt", gateway.LastPushRemotePath);
         Assert.Equal(cache.LocalPathFor("/sdcard/a.txt"), gateway.LastPushLocalPath);
-        Assert.False(cache.IsDirty("/sdcard/a.txt")); // cleared after a successful push
+        Assert.False(cache.IsDirty("/sdcard/a.txt"));
     }
 
     [Fact]
@@ -231,7 +217,7 @@ public sealed class FileCacheTests : IDisposable
         var flush = await cache.FlushAsync("/sdcard/a.txt");
 
         Assert.False(flush.IsSuccess);
-        Assert.True(cache.IsDirty("/sdcard/a.txt")); // stays pending
+        Assert.True(cache.IsDirty("/sdcard/a.txt"));
     }
 
     [Fact]
@@ -264,8 +250,6 @@ public sealed class FileCacheTests : IDisposable
         Assert.False(File.Exists(local));
     }
 
-    // ---- cleanup on unmount (Req 4.4) ----
-
     [Fact]
     public async Task Dispose_deletes_the_whole_cache_directory()
     {
@@ -286,7 +270,7 @@ public sealed class FileCacheTests : IDisposable
         var cache = NewCache(new FakeGateway());
 
         cache.Dispose();
-        cache.Dispose(); // must not throw
+        cache.Dispose();
     }
 
     [Fact]

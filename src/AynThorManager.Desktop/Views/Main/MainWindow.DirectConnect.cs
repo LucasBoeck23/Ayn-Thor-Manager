@@ -2,12 +2,6 @@ using Avalonia.Interactivity;
 
 namespace AynThorManager.Desktop;
 
-/// <summary>
-/// Direct connection UI: the Thor runs its own 5 GHz Wi-Fi hotspot and the PC joins it.
-/// All the connect/discover/retry orchestration lives in <c>DirectConnectionService</c>;
-/// this partial only wires buttons to it, shows its progress messages, and toggles
-/// which buttons are visible.
-/// </summary>
 public partial class MainWindow
 {
     private async void BtnDirectConnect_Click(object? sender, RoutedEventArgs e)
@@ -22,10 +16,8 @@ public partial class MainWindow
             var result = await _directConnection.ConnectAsync(ssid, password, default);
 
             if (!_directConnection.IsActive)
-                return; // Wi-Fi failed; the service already reported the error.
+                return;
 
-            // Joined the hotspot: remember the SSID (config) and password (keyring) so
-            // the fields pre-fill next time. Best-effort, must not block the flow.
             await SaveConnectionAsync(ssid.Trim(), password.Trim());
 
             BtnDirectConnect.IsVisible = false;

@@ -4,17 +4,6 @@ using AynThorManager.Core.Interfaces;
 
 namespace AynThorManager.Infrastructure.Settings;
 
-/// <summary>
-/// Stores secrets in the system keyring via <c>secret-tool</c> (libsecret / Secret
-/// Service — the GNOME keyring backend). Each secret is tagged with the app name and a
-/// key attribute so entries are namespaced and overwrite cleanly.
-///
-/// Best-effort by design (<see cref="ISecretStore"/>): if <c>secret-tool</c> or a
-/// keyring backend isn't available, <see cref="GetAsync"/> returns null and
-/// set/delete are no-ops — the app keeps working, it just won't remember the password.
-/// The secret value is passed to <c>secret-tool store</c> on stdin, so it never appears
-/// in the process arguments / command line.
-/// </summary>
 public sealed class SecretToolStore : ISecretStore
 {
     private const string Executable = "secret-tool";
@@ -32,13 +21,12 @@ public sealed class SecretToolStore : ISecretStore
             if (result.ExitCode != 0)
                 return null;
 
-            // secret-tool prints the secret with no trailing newline; be tolerant anyway.
             var secret = result.StandardOutput.TrimEnd('\n', '\r');
             return string.IsNullOrEmpty(secret) ? null : secret;
         }
         catch (Exception)
         {
-            return null; // no secret-tool / no keyring backend
+            return null;
         }
     }
 
@@ -52,14 +40,12 @@ public sealed class SecretToolStore : ISecretStore
                     "store", "--label", $"Ayn Thor Manager ({key})",
                     "application", AppAttribute, "key", key,
                 })
-                // Pass the secret on stdin so it never shows up in the command line.
                 .WithStandardInputPipe(PipeSource.FromString(secret))
                 .WithValidation(CommandResultValidation.None)
                 .ExecuteBufferedAsync(ct);
         }
         catch (Exception)
         {
-            // Best-effort: without a keyring we simply don't remember the secret.
         }
     }
 
@@ -74,7 +60,6 @@ public sealed class SecretToolStore : ISecretStore
         }
         catch (Exception)
         {
-            // Best-effort.
         }
     }
 }

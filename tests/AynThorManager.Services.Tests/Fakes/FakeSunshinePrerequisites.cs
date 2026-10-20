@@ -3,11 +3,6 @@ using AynThorManager.Core.Models;
 
 namespace AynThorManager.Services.Tests.Fakes;
 
-/// <summary>
-/// Fake PC-side prerequisite checker. Returns a configurable list; by default every
-/// check is ok. <see cref="WithMissing"/> flips one entry to not-ok so the orchestrator's
-/// gate (REVERSE_PREREQUISITES_MISSING) can be exercised.
-/// </summary>
 internal sealed class FakeSunshinePrerequisites : ISunshinePrerequisites
 {
     private IReadOnlyList<Prerequisite> _result =
@@ -32,12 +27,6 @@ internal sealed class FakeSunshinePrerequisites : ISunshinePrerequisites
         return this;
     }
 
-    /// <summary>
-    /// Flips the best-effort hardware-encoder check to not-ok (likely software fallback)
-    /// while everything blocking stays satisfied. Uses the real backend name so
-    /// <see cref="Prerequisite.IsBlocking"/> classifies it as a non-blocking warning
-    /// (Req 5.2): the start must still proceed.
-    /// </summary>
     public FakeSunshinePrerequisites WithSoftwareEncodeWarning()
     {
         _result =

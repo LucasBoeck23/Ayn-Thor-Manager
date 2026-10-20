@@ -26,7 +26,7 @@ public partial class InputDialog : Window
         Opened += (_, _) => Dispatcher.UIThread.Post(() =>
         {
             InputBox.Focus();
-            InputBox.SelectAll(); 
+            InputBox.SelectAll();
         });
     }
 

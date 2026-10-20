@@ -4,15 +4,6 @@ using Microsoft.Extensions.Logging;
 
 namespace AynThorManager.Services.Connection;
 
-/// <summary>
-/// Orchestrates the "direct connection" flow: the Thor runs its own 5 GHz Wi-Fi
-/// hotspot, the PC joins it, finds the Thor (the network gateway) and attaches adb
-/// over the fixed tcpip port.
-///
-/// This owns the whole connect → discover → adb → retry state machine that used to
-/// live in the UI. The UI just calls these methods and reacts to the results and the
-/// <see cref="Progress"/> messages.
-/// </summary>
 public sealed class DirectConnectionService(
     DeviceConnection device,
     IWifiConnection wifi,
@@ -24,19 +15,12 @@ public sealed class DirectConnectionService(
     private string? _thorIp;
     private bool _busy;
 
-    /// <summary>True once the PC has joined the Thor's hotspot (until it is stopped).</summary>
     public bool IsActive => _active;
 
-    /// <summary>Raised with human-readable status messages for the UI to display.</summary>
     public event Action<string>? Progress;
 
     private void Report(string message) => Progress?.Invoke(message);
 
-    /// <summary>
-    /// Joins the Thor's hotspot and connects adb to it. On success the connected
-    /// <see cref="ThorDevice"/> is returned; the caller can inspect <see cref="IsActive"/>
-    /// to know whether the Wi-Fi link is up even when the adb step needs a retry.
-    /// </summary>
     public async Task<Result<ThorDevice>> ConnectAsync(string ssid, string password, CancellationToken ct)
     {
         if (_active)
@@ -64,11 +48,6 @@ public sealed class DirectConnectionService(
         return await DiscoverAndConnectAsync(ct);
     }
 
-    /// <summary>
-    /// Attaches adb to the Thor on the fixed tcpip port. The Thor must have been armed
-    /// once with <see cref="DeviceConnection.PrepareUsbTcpipAsync"/> over USB. Safe to
-    /// call again as a retry; returns a failure (not an exception) when it can't connect.
-    /// </summary>
     public async Task<Result<ThorDevice>> DiscoverAndConnectAsync(CancellationToken ct)
     {
         if (_thorIp is null)
@@ -98,7 +77,6 @@ public sealed class DirectConnectionService(
         }
     }
 
-    /// <summary>Arms the Thor over USB (one-time) so it is reachable wirelessly on the fixed port.</summary>
     public async Task<Result<ThorDevice>> PrepareUsbAsync(CancellationToken ct)
     {
         Report("Procurando o Thor via USB...");
@@ -109,7 +87,6 @@ public sealed class DirectConnectionService(
         return result;
     }
 
-    /// <summary>Leaves the Thor's hotspot and resets the state. The PC's Wi-Fi returns to normal.</summary>
     public async Task StopAsync(CancellationToken ct)
     {
         await CleanupAsync(ct);

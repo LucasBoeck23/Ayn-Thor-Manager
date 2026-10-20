@@ -4,22 +4,10 @@ using AynThorManager.Core.Interfaces;
 
 namespace AynThorManager.Infrastructure.Network;
 
-/// <summary>
-/// Joins the PC to the Thor's own Wi-Fi hotspot (the Thor is the access point) and
-/// reports the Thor's IP, which is the gateway of that network.
-///
-/// This replaces the fragile "PC becomes the hotspot" approach: being a Wi-Fi client
-/// is a rock-solid, root-free operation, and modern Android handhelds create a clean
-/// 5 GHz AP, so this gives a stable low-latency link without touching hostapd/drivers.
-/// </summary>
 public sealed class WifiConnectionService : IWifiConnection
 {
     private const string ProfileName = "AynThorDirect";
 
-    /// <summary>
-    /// Connects to the hotspot <paramref name="ssid"/> and returns the Thor's IP
-    /// (the default gateway on that interface), or an error message on failure.
-    /// </summary>
     public async Task<(bool Ok, string? ThorIp, string? Error)> ConnectAsync(
         string ssid, string password, CancellationToken ct)
     {
@@ -27,10 +15,6 @@ public sealed class WifiConnectionService : IWifiConnection
         if (iface is null)
             return (false, null, "Nenhuma interface Wi-Fi encontrada no PC.");
 
-        // Rebuild the profile fresh each time so a stale/mismatched one (e.g. a WPA3
-        // entry from a previous attempt) can't block the connection. WPA2-PSK is set
-        // explicitly because `nmcli dev wifi connect` guesses the key-mgmt and fails
-        // on some adapters.
         await RunAsync("nmcli", new[] { "connection", "delete", ProfileName }, ct);
 
         await RunAsync("nmcli", new[] { "device", "wifi", "rescan" }, ct);
@@ -62,14 +46,12 @@ public sealed class WifiConnectionService : IWifiConnection
         return (true, ip, null);
     }
 
-    /// <summary>Disconnects from the hotspot and removes the profile.</summary>
     public async Task DisconnectAsync(CancellationToken ct)
     {
         await RunAsync("nmcli", new[] { "connection", "down", ProfileName }, ct);
         await RunAsync("nmcli", new[] { "connection", "delete", ProfileName }, ct);
     }
 
-    /// <summary>Finds the first Wi-Fi interface name (e.g. "wlp2s0") via nmcli.</summary>
     public static async Task<string?> DetectWifiInterfaceAsync(CancellationToken ct = default)
     {
         var result = await RunAsync("nmcli", new[] { "-t", "-f", "DEVICE,TYPE", "device" }, ct);
@@ -86,14 +68,12 @@ public sealed class WifiConnectionService : IWifiConnection
         return null;
     }
 
-    /// <summary>Reads the default gateway on the interface — that is the Thor itself.</summary>
     private static async Task<string?> GetGatewayAsync(string iface, CancellationToken ct)
     {
         var result = await RunAsync("ip", new[] { "-4", "route", "show", "default", "dev", iface }, ct);
         if (result.ExitCode != 0)
             return null;
 
-        // e.g. "default via 192.168.154.104 proto dhcp src 192.168.154.37 metric 600"
         var tokens = result.StandardOutput.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var viaIndex = Array.IndexOf(tokens, "via");
         return viaIndex >= 0 && viaIndex + 1 < tokens.Length ? tokens[viaIndex + 1] : null;

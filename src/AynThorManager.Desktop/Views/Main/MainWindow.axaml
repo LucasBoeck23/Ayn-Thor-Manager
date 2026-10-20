@@ -24,7 +24,6 @@
                     <StackPanel>
                         <TextBlock Text="Conexao" FontSize="11" Foreground="#78909c" Margin="0,0,0,6" />
 
-                        <!-- O Thor cria o hotspot 5GHz; o PC conecta nele -->
                         <TextBlock Text="Rede do Thor (SSID)" FontSize="10" Foreground="#78909c" Margin="0,0,0,2" />
                         <TextBox x:Name="TxtThorSsid" Classes="input" Watermark="AynThor"
                                  HorizontalAlignment="Stretch" />
@@ -83,9 +82,7 @@
         <DockPanel Grid.Column="1">
             <Border DockPanel.Dock="Top" Padding="12" Background="#16213e" BorderBrush="#0f3460" BorderThickness="0,0,0,1">
                 <StackPanel Orientation="Horizontal">
-                    <!-- Direção do streaming (Req 1.1). Dois ToggleButtons mutuamente
-                         exclusivos: Thor→PC é o padrão (scrcpy, comportamento atual);
-                         PC→Thor é o fluxo reverso (Sunshine + Moonlight). -->
+                    
                     <Border Background="#0e1a30" CornerRadius="4" Padding="2" Margin="0,0,12,0"
                             VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
@@ -99,23 +96,16 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Botão de ação único: despacha para o sentido selecionado (Req 1.2). -->
                     <Button x:Name="BtnStream" Content="Espelhar Tela" Click="BtnStream_Click" Classes="btn primary" Margin="0,0,8,0" />
                     <Button x:Name="BtnStopStream" Content="Parar" Click="BtnStopStream_Click" Classes="btn danger" IsVisible="False" />
                     <TextBlock x:Name="StreamStatus" Text="Inativo" VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11" Foreground="#78909c" TextWrapping="Wrap" />
 
-                    <!-- Link para a WebUI do Sunshine, visível quando o PC→Thor está ativo:
-                         leva o usuário direto ao painel (parear, PIN, configurar). -->
                     <Button x:Name="BtnSunshineWebUi" Content="Acessar Sunshine: https://localhost:47990"
                             Click="BtnSunshineWebUi_Click" Classes="btn default" FontSize="11"
                             Padding="10,4" Margin="12,0,0,0" VerticalAlignment="Center"
                             IsVisible="False"
                             ToolTip.Tip="Abre o painel do Sunshine no navegador" />
 
-                    <!-- Abrir arquivos do Thor (Req 1): monta o Thor via FUSE nativo e abre
-                         no gerenciador de arquivos nativo. Habilitado só com o Thor conectado
-                         (Req 2.3); o rótulo/estado reflete o MountStatus (indisponível sem
-                         Thor, montando, montado, erro). -->
                     <Button x:Name="BtnOpenThorFiles" Content="📂 Abrir arquivos do Thor"
                             Click="BtnOpenThorFiles_Click" Classes="btn default"
                             Margin="12,0,0,0" VerticalAlignment="Center" />
@@ -124,11 +114,6 @@
                 </StackPanel>
             </Border>
 
-            <!-- Aviso best-effort, não-bloqueante (Req 5.2 / 6.2). Aparece quando o encode
-                 por hardware (VAAPI) não é confirmado — provável fallback para software,
-                 que degrada a performance em jogos — ou quando a captura via Portal não
-                 está disponível. É apenas um aviso: o streaming segue permitido. Fica
-                 separado da checklist bloqueante dos pré-requisitos (6.3). -->
             <Border x:Name="WarningBanner" DockPanel.Dock="Top" IsVisible="False"
                     Background="#2e2a16" BorderBrush="#f0a202" BorderThickness="0,0,0,2"
                     Padding="12,8">
@@ -141,9 +126,7 @@
 
             <Border Background="Black">
                 <Grid>
-                    <!-- Dica padrão (Thor→PC): o scrcpy abre a tela do Thor em janela
-                         separada. Visível por padrão; escondido quando o fluxo guiado
-                         de pré-requisitos do PC→Thor assume o centro. -->
+                    
                     <StackPanel x:Name="ScrcpyHint" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
                         <TextBlock Text="📱" FontSize="48" HorizontalAlignment="Center" Opacity="0.5" />
                         <TextBlock Text="Clique em &quot;Espelhar Tela&quot; para abrir a tela do Thor"
@@ -152,9 +135,6 @@
                                    Foreground="#546e7a" FontSize="11" HorizontalAlignment="Center" TextAlignment="Center" />
                     </StackPanel>
 
-                    <!-- Fluxo guiado de pré-requisitos (Req 2.3/2.4/6.2). Só o que falta é
-                         listado, cada item com nome, orientação e um link clicável quando
-                         houver URL. O app apenas orienta — nunca instala nada. -->
                     <Border x:Name="PrereqPanel" IsVisible="False" Padding="24"
                             HorizontalAlignment="Center" VerticalAlignment="Center"
                             MaxWidth="520">
@@ -196,11 +176,6 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Fluxo guiado quando falta o FUSE (Req 2.2). Só os itens que faltam
-                         são listados, cada um com a orientação de como obter (pacote da
-                         distro) e um link oficial quando houver. O app apenas orienta —
-                         nunca instala nada. Reaproveita o row template de PrereqItem usado
-                         no fluxo PC→Thor. -->
                     <Border x:Name="MountPrereqPanel" IsVisible="False" Padding="24"
                             HorizontalAlignment="Center" VerticalAlignment="Center"
                             MaxWidth="520">

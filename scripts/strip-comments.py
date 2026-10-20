@@ -21,7 +21,7 @@ def strip_csharp(text: str) -> str:
         nxt = text[i + 1] if i + 1 < n else ""
 
         # Verbatim / interpolated-verbatim string: @"..." or $@"..." or @$"..."
-        if c == '@' and nxt == '"' or (c in '$' and text[i:i + 3] in ('$@"', '@$"')):
+        if (c == '@' and nxt == '"') or text[i:i + 3] in ('$@"', '@$"'):
             # find the start quote
             j = text.index('"', i)
             out.append(text[i:j + 1])
@@ -89,14 +89,19 @@ def strip_csharp(text: str) -> str:
         i += 1
 
     result = ''.join(out)
-    # Drop lines that became empty/whitespace solely because a comment was removed.
+    # Drop lines that became empty/whitespace solely because a comment was removed,
+    # and trim trailing whitespace left where an end-of-line comment was cut off.
     lines = result.split('\n')
     cleaned = []
     for ln in lines:
-        if ln.strip() == '' and len(ln) != 0 and ln != '':
-            # whitespace-only line left by a comment -> drop
+        stripped_tail = ln.rstrip()
+        if stripped_tail == '':
+            if ln != '':
+                # whitespace-only line left by a comment -> drop
+                continue
+            cleaned.append('')
             continue
-        cleaned.append(ln)
+        cleaned.append(stripped_tail)
     # collapse 3+ blank lines into max 1
     out_lines = []
     blank = 0

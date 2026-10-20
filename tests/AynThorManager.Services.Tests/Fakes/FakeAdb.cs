@@ -3,11 +3,6 @@ using AynThorManager.Core.Models;
 
 namespace AynThorManager.Services.Tests.Fakes;
 
-/// <summary>
-/// Scripted stand-in for adb. Each command gets a list of responses consumed in
-/// order; the last one repeats. Unscripted commands throw so a test fails loudly
-/// instead of silently talking to nothing.
-/// </summary>
 internal sealed class FakeAdb : ICommandQueue
 {
     private readonly Dictionary<string, List<Func<Result<CommandResult>>>> _scripts = new();
@@ -19,11 +14,9 @@ internal sealed class FakeAdb : ICommandQueue
         Add(arguments, () => Result<CommandResult>.Success(
             new CommandResult(exitCode == 0, stdout, stderr, exitCode, TimeSpan.FromMilliseconds(5))));
 
-    /// <summary>Simulates the queue/executor itself failing (cancellation, crash).</summary>
     public FakeAdb OnQueueFailure(string arguments, string code = "COMMAND_EXECUTION_FAILED") =>
         Add(arguments, () => Result<CommandResult>.Failure(new Error(code, "fake failure")));
 
-    /// <summary>Same output the real AdbCommandExecutor returns when a command times out.</summary>
     public FakeAdb OnTimeout(string arguments) =>
         On(arguments, stderr: "Command timed out after 10 seconds", exitCode: -1);
 

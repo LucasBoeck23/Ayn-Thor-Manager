@@ -4,25 +4,16 @@ using AynThorManager.Core.Models;
 
 namespace AynThorManager.Infrastructure.Settings;
 
-/// <summary>
-/// Persists the non-secret connection preferences to a small JSON file under the user's
-/// config dir (<c>$XDG_CONFIG_HOME/ayn-thor-manager/settings.json</c>, falling back to
-/// <c>~/.config</c>). Best-effort: a missing/corrupt file loads as defaults, and save
-/// failures are swallowed so a read-only home can't crash the app. Never writes the
-/// Wi-Fi password — that is the keyring's job (<see cref="ISecretStore"/>).
-/// </summary>
 public sealed class ConnectionSettingsStore : IConnectionSettingsStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     private readonly string _filePath;
 
-    /// <summary>Uses the default per-user config path.</summary>
     public ConnectionSettingsStore() : this(DefaultFilePath())
     {
     }
 
-    /// <summary>Test seam: persist to an explicit path.</summary>
     internal ConnectionSettingsStore(string filePath) => _filePath = filePath;
 
     private static string DefaultFilePath()
@@ -48,7 +39,6 @@ public sealed class ConnectionSettingsStore : IConnectionSettingsStore
         }
         catch (Exception)
         {
-            // Corrupt/unreadable file: fall back to defaults rather than failing the UI.
             return new ConnectionSettings();
         }
     }
@@ -66,7 +56,6 @@ public sealed class ConnectionSettingsStore : IConnectionSettingsStore
         }
         catch (Exception)
         {
-            // Best-effort: a read-only home shouldn't crash the app or block connecting.
         }
     }
 }

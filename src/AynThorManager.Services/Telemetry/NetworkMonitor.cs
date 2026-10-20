@@ -6,22 +6,12 @@ using Microsoft.Extensions.Logging;
 
 namespace AynThorManager.Services.Telemetry;
 
-/// <summary>
-/// Single source of link telemetry to the Thor. Measures round-trip latency with an
-/// adb echo and reads Wi-Fi RSSI/frequency from <c>dumpsys wifi</c>. Both the live
-/// stats panel and the adaptive-buffer pre-flight use this, so the ping logic lives in
-/// exactly one place.
-/// </summary>
 public sealed partial class NetworkMonitor(
     DeviceConnection device,
     ILogger<NetworkMonitor> logger)
 {
     private static readonly TimeSpan PingTimeout = TimeSpan.FromSeconds(2);
 
-    /// <summary>
-    /// Measures one round-trip latency and (best-effort) the current Wi-Fi RSSI and
-    /// frequency. Returns null when the device isn't connected or the ping failed.
-    /// </summary>
     public async Task<NetworkSample?> MeasureAsync(CancellationToken ct = default)
     {
         var latency = await PingAsync(ct);
@@ -32,10 +22,6 @@ public sealed partial class NetworkMonitor(
         return new NetworkSample(latency.Value, rssi, freq);
     }
 
-    /// <summary>
-    /// Pings a few times and returns the jitter (spread between fastest and slowest
-    /// round-trip), or null when fewer than two samples could be measured.
-    /// </summary>
     public async Task<int?> SampleJitterAsync(int samples, CancellationToken ct = default)
     {
         var latencies = new List<int>(samples);

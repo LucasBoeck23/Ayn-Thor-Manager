@@ -11,7 +11,7 @@ public static class PathValidator
     [
         "/sdcard/",
         "/storage/emulated/0/",
-        "/storage/"  
+        "/storage/"
     ];
 
     public static Result Validate(string path)

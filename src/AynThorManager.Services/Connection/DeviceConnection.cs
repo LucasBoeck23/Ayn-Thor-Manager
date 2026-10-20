@@ -32,12 +32,6 @@ public sealed class DeviceConnection(
         return result.IsSuccess ? AdbOutputParser.ParseDevices(result.Value!.StandardOutput) : [];
     }
 
-    /// <summary>
-    /// One-time setup over USB: with the Thor plugged in (USB debugging authorized),
-    /// switches its adb daemon to listen on a fixed TCP port (5555). After this the
-    /// cable can be removed and the device is reachable over Wi-Fi at that port —
-    /// including when the Thor is acting as a hotspot (unlike mDNS wireless debugging).
-    /// </summary>
     public async Task<Result<ThorDevice>> PrepareUsbTcpipAsync(CancellationToken ct)
     {
         var usb = (await ListDevicesAsync(ct))
@@ -139,13 +133,6 @@ public sealed class DeviceConnection(
     private Task<Result<CommandResult>> RawAsync(string arguments, TimeSpan timeout, CancellationToken ct) =>
         queue.EnqueueAsync(new AdbCommand(arguments, timeout, arguments), ct);
 
-    /// <summary>
-    /// Picks a single, stable entry for a serial when <c>adb devices</c> lists the same
-    /// Thor more than once (e.g. a stale <c>offline</c> alongside the live <c>device</c>).
-    /// Prefers the ready (<c>device</c>) entry, then an <c>unauthorized</c> one, and only
-    /// then anything else — so a leftover offline duplicate never wins the selection and
-    /// we never command the wrong target (Req 5.2). Ties keep adb's listing order.
-    /// </summary>
     private static AdbDeviceEntry? PickForSerial(IReadOnlyList<AdbDeviceEntry> devices, string serial) =>
         devices
             .Where(d => d.Serial == serial)
