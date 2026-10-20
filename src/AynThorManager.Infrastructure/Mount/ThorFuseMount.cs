@@ -43,7 +43,7 @@ public sealed class ThorFuseMount : IThorMount, IDisposable
         get { lock (_lock) return _state?.MountPoint; }
     }
 
-    public Task MountAsync(string serial, CancellationToken ct = default)
+    public async Task MountAsync(string serial, CancellationToken ct = default)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
@@ -53,10 +53,11 @@ public sealed class ThorFuseMount : IThorMount, IDisposable
         lock (_lock)
         {
             if (_state is not null)
-                return Task.CompletedTask;
+                return;
         }
 
         var mountPoint = ResolveMountPoint();
+        await ClearOrphanMountAsync(mountPoint, ct).ConfigureAwait(false);
         Directory.CreateDirectory(mountPoint);
 
         var operations = _filesystem.CreateOperations();
@@ -96,7 +97,7 @@ public sealed class ThorFuseMount : IThorMount, IDisposable
 
         thread.Start();
 
-        return WaitUntilMountedOrFailedAsync(state, ct);
+        await WaitUntilMountedOrFailedAsync(state, ct).ConfigureAwait(false);
     }
 
     private async Task WaitUntilMountedOrFailedAsync(MountState state, CancellationToken ct)
@@ -170,6 +171,33 @@ public sealed class ThorFuseMount : IThorMount, IDisposable
         catch
         {
         }
+    }
+
+    private async Task ClearOrphanMountAsync(string mountPoint, CancellationToken ct)
+    {
+        if (!IsOrphanMount(mountPoint))
+            return;
+
+        var fusermount = await ResolveFusermountAsync(ct).ConfigureAwait(false) ?? FusermountBinaries[^1];
+        await _run(fusermount, ["-u", "-z", mountPoint], ct).ConfigureAwait(false);
+    }
+
+    private static bool IsOrphanMount(string mountPoint)
+    {
+        try
+        {
+            foreach (var line in File.ReadLines("/proc/mounts"))
+            {
+                var parts = line.Split(' ');
+                if (parts.Length >= 2 && parts[1] == mountPoint)
+                    return true;
+            }
+        }
+        catch (IOException)
+        {
+        }
+
+        return false;
     }
 
     private Task<string?> ResolveFusermountAsync(CancellationToken ct) =>
