@@ -20,60 +20,41 @@ public sealed class ActiveDeviceAdbFileGateway : IAdbFileGateway
         _serialProvider = serialProvider;
     }
 
-    public Task<Result<IReadOnlyList<ThorFileEntry>>> ListAsync(string remotePath, CancellationToken ct = default)
+    public Task<Result<IReadOnlyList<ThorFileEntry>>> ListAsync(string remotePath, CancellationToken ct = default) =>
+        Run(g => g.ListAsync(remotePath, ct), Result<IReadOnlyList<ThorFileEntry>>.Failure);
+
+    public Task<Result<ThorFileEntry>> StatAsync(string remotePath, CancellationToken ct = default) =>
+        Run(g => g.StatAsync(remotePath, ct), Result<ThorFileEntry>.Failure);
+
+    public Task<Result> PullAsync(string remotePath, string localPath, CancellationToken ct = default) =>
+        Run(g => g.PullAsync(remotePath, localPath, ct));
+
+    public Task<Result> PushAsync(string localPath, string remotePath, CancellationToken ct = default) =>
+        Run(g => g.PushAsync(localPath, remotePath, ct));
+
+    public Task<Result> DeleteAsync(string remotePath, CancellationToken ct = default) =>
+        Run(g => g.DeleteAsync(remotePath, ct));
+
+    public Task<Result> MakeDirAsync(string remotePath, CancellationToken ct = default) =>
+        Run(g => g.MakeDirAsync(remotePath, ct));
+
+    public Task<Result> RenameAsync(string fromRemotePath, string toRemotePath, CancellationToken ct = default) =>
+        Run(g => g.RenameAsync(fromRemotePath, toRemotePath, ct));
+
+    private Task<T> Run<T>(Func<IAdbFileGateway, Task<T>> call, Func<Error, T> fail)
     {
         if (!TryResolve(out var gateway, out var error))
-            return Task.FromResult(Result<IReadOnlyList<ThorFileEntry>>.Failure(error));
+            return Task.FromResult(fail(error));
 
-        return gateway.ListAsync(remotePath, ct);
+        return call(gateway);
     }
 
-    public Task<Result<ThorFileEntry>> StatAsync(string remotePath, CancellationToken ct = default)
-    {
-        if (!TryResolve(out var gateway, out var error))
-            return Task.FromResult(Result<ThorFileEntry>.Failure(error));
-
-        return gateway.StatAsync(remotePath, ct);
-    }
-
-    public Task<Result> PullAsync(string remotePath, string localPath, CancellationToken ct = default)
+    private Task<Result> Run(Func<IAdbFileGateway, Task<Result>> call)
     {
         if (!TryResolve(out var gateway, out var error))
             return Task.FromResult(Result.Failure(error));
 
-        return gateway.PullAsync(remotePath, localPath, ct);
-    }
-
-    public Task<Result> PushAsync(string localPath, string remotePath, CancellationToken ct = default)
-    {
-        if (!TryResolve(out var gateway, out var error))
-            return Task.FromResult(Result.Failure(error));
-
-        return gateway.PushAsync(localPath, remotePath, ct);
-    }
-
-    public Task<Result> DeleteAsync(string remotePath, CancellationToken ct = default)
-    {
-        if (!TryResolve(out var gateway, out var error))
-            return Task.FromResult(Result.Failure(error));
-
-        return gateway.DeleteAsync(remotePath, ct);
-    }
-
-    public Task<Result> MakeDirAsync(string remotePath, CancellationToken ct = default)
-    {
-        if (!TryResolve(out var gateway, out var error))
-            return Task.FromResult(Result.Failure(error));
-
-        return gateway.MakeDirAsync(remotePath, ct);
-    }
-
-    public Task<Result> RenameAsync(string fromRemotePath, string toRemotePath, CancellationToken ct = default)
-    {
-        if (!TryResolve(out var gateway, out var error))
-            return Task.FromResult(Result.Failure(error));
-
-        return gateway.RenameAsync(fromRemotePath, toRemotePath, ct);
+        return call(gateway);
     }
 
     private bool TryResolve(out IAdbFileGateway gateway, out Error error)

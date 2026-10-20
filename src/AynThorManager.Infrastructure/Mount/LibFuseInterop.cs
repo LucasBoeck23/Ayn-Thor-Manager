@@ -104,43 +104,18 @@ internal sealed class FuseException : Exception
 
 internal static class FuseErrno
 {
-    public const int EPERM = 1;
-
     public const int ENOENT = 2;
-
     public const int EINTR = 4;
-
     public const int EIO = 5;
-
-    public const int EBADF = 9;
-
     public const int EACCES = 13;
-
     public const int EEXIST = 17;
-
-    public const int ENOTDIR = 20;
-
-    public const int EISDIR = 21;
-
     public const int EINVAL = 22;
-
-    public const int ENOSPC = 28;
-
-    public const int EROFS = 30;
-
-    public const int ENOTEMPTY = 39;
-
-    public const int ENOSYS = 38;
 }
 
 internal static class FuseMode
 {
-    public const uint S_IFMT = 0xF000;
-
     public const uint S_IFREG = 0x8000;
-
     public const uint S_IFDIR = 0x4000;
-
     public const uint S_IFLNK = 0xA000;
 }
 
@@ -279,6 +254,25 @@ internal delegate int FuseRename(
     [MarshalAs(UnmanagedType.LPUTF8Str)] string to,
     uint flags);
 
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+internal delegate int FuseChmod(
+    [MarshalAs(UnmanagedType.LPUTF8Str)] string path,
+    uint mode,
+    IntPtr fi);
+
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+internal delegate int FuseChown(
+    [MarshalAs(UnmanagedType.LPUTF8Str)] string path,
+    uint uid,
+    uint gid,
+    IntPtr fi);
+
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+internal delegate int FuseUtimens(
+    [MarshalAs(UnmanagedType.LPUTF8Str)] string path,
+    IntPtr tv,
+    IntPtr fi);
+
 [StructLayout(LayoutKind.Sequential)]
 internal struct FuseOperations
 {
@@ -291,8 +285,8 @@ internal struct FuseOperations
     public IntPtr symlink;
     public FuseRename? rename;
     public IntPtr link;
-    public IntPtr chmod;
-    public IntPtr chown;
+    public FuseChmod? chmod;
+    public FuseChown? chown;
     public FuseTruncate? truncate;
     public FuseOpen? open;
     public FuseRead? read;
@@ -314,7 +308,7 @@ internal struct FuseOperations
     public IntPtr access;
     public FuseCreate? create;
     public IntPtr lock_;
-    public IntPtr utimens;
+    public FuseUtimens? utimens;
     public IntPtr bmap;
     public IntPtr ioctl;
     public IntPtr poll;

@@ -58,73 +58,48 @@ public sealed class AdbFileGateway : IAdbFileGateway
         if (entry is null)
             return Result<ThorFileEntry>.Failure(new Error("STAT_FAILED", $"Não foi possível ler os dados de {remotePath}."));
 
-        var name = LeafName(remotePath);
-        return Result<ThorFileEntry>.Success(entry with { Name = name });
+        return Result<ThorFileEntry>.Success(entry with { Name = LeafName(remotePath) });
     }
 
-    public async Task<Result> PullAsync(string remotePath, string localPath, CancellationToken ct = default)
+    public Task<Result> PullAsync(string remotePath, string localPath, CancellationToken ct = default) =>
+        string.IsNullOrWhiteSpace(remotePath) || string.IsNullOrWhiteSpace(localPath)
+            ? Task.FromResult(Result.Failure(InvalidPath()))
+            : RunAsync(new[] { "-s", _serial, "pull", remotePath, localPath }, TransferTimeout, remotePath, ct);
+
+    public Task<Result> PushAsync(string localPath, string remotePath, CancellationToken ct = default) =>
+        string.IsNullOrWhiteSpace(localPath) || string.IsNullOrWhiteSpace(remotePath)
+            ? Task.FromResult(Result.Failure(InvalidPath()))
+            : RunAsync(new[] { "-s", _serial, "push", localPath, remotePath }, TransferTimeout, remotePath, ct);
+
+    public Task<Result> DeleteAsync(string remotePath, CancellationToken ct = default) =>
+        ShellAsync($"rm -rf {Quote(remotePath)}", remotePath, ct);
+
+    public Task<Result> MakeDirAsync(string remotePath, CancellationToken ct = default) =>
+        ShellAsync($"mkdir {Quote(remotePath)}", remotePath, ct);
+
+    public Task<Result> RenameAsync(string fromRemotePath, string toRemotePath, CancellationToken ct = default) =>
+        string.IsNullOrWhiteSpace(fromRemotePath) || string.IsNullOrWhiteSpace(toRemotePath)
+            ? Task.FromResult(Result.Failure(InvalidPath()))
+            : ShellAsync($"mv {Quote(fromRemotePath)} {Quote(toRemotePath)}", fromRemotePath, ct);
+
+    private Task<Result> ShellAsync(string shellCommand, string contextPath, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(remotePath) || string.IsNullOrWhiteSpace(localPath))
-            return Result.Failure(InvalidPath());
+        if (string.IsNullOrWhiteSpace(contextPath))
+            return Task.FromResult(Result.Failure(InvalidPath()));
 
-        var result = await _executor.ExecuteAsync(
-            new[] { "-s", _serial, "pull", remotePath, localPath }, TransferTimeout, ct);
-
-        return result.Success
-            ? Result.Success()
-            : Result.Failure(MapError(result, remotePath));
+        return RunStringAsync($"-s {_serial} shell {shellCommand}", MetadataTimeout, contextPath, ct);
     }
 
-    public async Task<Result> PushAsync(string localPath, string remotePath, CancellationToken ct = default)
+    private async Task<Result> RunStringAsync(string arguments, TimeSpan timeout, string contextPath, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(localPath) || string.IsNullOrWhiteSpace(remotePath))
-            return Result.Failure(InvalidPath());
-
-        var result = await _executor.ExecuteAsync(
-            new[] { "-s", _serial, "push", localPath, remotePath }, TransferTimeout, ct);
-
-        return result.Success
-            ? Result.Success()
-            : Result.Failure(MapError(result, remotePath));
+        var result = await _executor.ExecuteAsync(arguments, timeout, ct);
+        return result.Success ? Result.Success() : Result.Failure(MapError(result, contextPath));
     }
 
-    public async Task<Result> DeleteAsync(string remotePath, CancellationToken ct = default)
+    private async Task<Result> RunAsync(IReadOnlyList<string> args, TimeSpan timeout, string contextPath, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(remotePath))
-            return Result.Failure(InvalidPath());
-
-        var result = await _executor.ExecuteAsync(
-            $"-s {_serial} shell rm -rf {Quote(remotePath)}", MetadataTimeout, ct);
-
-        return result.Success
-            ? Result.Success()
-            : Result.Failure(MapError(result, remotePath));
-    }
-
-    public async Task<Result> MakeDirAsync(string remotePath, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(remotePath))
-            return Result.Failure(InvalidPath());
-
-        var result = await _executor.ExecuteAsync(
-            $"-s {_serial} shell mkdir {Quote(remotePath)}", MetadataTimeout, ct);
-
-        return result.Success
-            ? Result.Success()
-            : Result.Failure(MapError(result, remotePath));
-    }
-
-    public async Task<Result> RenameAsync(string fromRemotePath, string toRemotePath, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(fromRemotePath) || string.IsNullOrWhiteSpace(toRemotePath))
-            return Result.Failure(InvalidPath());
-
-        var result = await _executor.ExecuteAsync(
-            $"-s {_serial} shell mv {Quote(fromRemotePath)} {Quote(toRemotePath)}", MetadataTimeout, ct);
-
-        return result.Success
-            ? Result.Success()
-            : Result.Failure(MapError(result, fromRemotePath));
+        var result = await _executor.ExecuteAsync(args, timeout, ct);
+        return result.Success ? Result.Success() : Result.Failure(MapError(result, contextPath));
     }
 
     private static Error MapError(CommandResult result, string contextPath)

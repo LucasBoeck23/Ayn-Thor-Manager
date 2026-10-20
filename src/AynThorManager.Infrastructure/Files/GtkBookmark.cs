@@ -1,4 +1,5 @@
 using AynThorManager.Core.Interfaces;
+using AynThorManager.Infrastructure.Settings;
 
 namespace AynThorManager.Infrastructure.Files;
 
@@ -98,15 +99,6 @@ public sealed class GtkBookmark : ISidebarBookmark
         return new UriBuilder(FileScheme + full).Uri.AbsoluteUri;
     }
 
-    private static string ResolveBookmarksPath()
-    {
-        var configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
-        if (string.IsNullOrWhiteSpace(configHome))
-        {
-            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            configHome = Path.Combine(home, ".config");
-        }
-
-        return Path.Combine(configHome, "gtk-3.0", "bookmarks");
-    }
+    private static string ResolveBookmarksPath() =>
+        Path.Combine(UserPaths.ConfigHome(), "gtk-3.0", "bookmarks");
 }

@@ -1,8 +1,6 @@
-using CliWrap;
-using CliWrap.Buffered;
 using AynThorManager.Core.Interfaces;
 using AynThorManager.Infrastructure.Files;
-using CommandOutput = AynThorManager.Infrastructure.Streaming.CommandOutput;
+using AynThorManager.Infrastructure.Processes;
 
 namespace AynThorManager.Infrastructure.Mount;
 
@@ -12,7 +10,7 @@ public sealed class ThorFuseMount : IThorMount, IDisposable
 
     private readonly ThorFuseFilesystem _filesystem;
     private readonly FileCache _cache;
-    private readonly FusermountRunner _run;
+    private readonly CommandRunner _run;
 
     private readonly object _lock = new();
 
@@ -20,11 +18,11 @@ public sealed class ThorFuseMount : IThorMount, IDisposable
     private int _disposed;
 
     public ThorFuseMount(ThorFuseFilesystem filesystem, FileCache cache)
-        : this(filesystem, cache, RealRun)
+        : this(filesystem, cache, ProcessRunner.RunAsync)
     {
     }
 
-    internal ThorFuseMount(ThorFuseFilesystem filesystem, FileCache cache, FusermountRunner run)
+    internal ThorFuseMount(ThorFuseFilesystem filesystem, FileCache cache, CommandRunner run)
     {
         ArgumentNullException.ThrowIfNull(filesystem);
         ArgumentNullException.ThrowIfNull(cache);
@@ -174,17 +172,8 @@ public sealed class ThorFuseMount : IThorMount, IDisposable
         }
     }
 
-    private async Task<string?> ResolveFusermountAsync(CancellationToken ct)
-    {
-        foreach (var candidate in FusermountBinaries)
-        {
-            var result = await _run("which", [candidate], ct).ConfigureAwait(false);
-            if (result.ExitCode == 0 && !string.IsNullOrWhiteSpace(result.StandardOutput))
-                return candidate;
-        }
-
-        return null;
-    }
+    private Task<string?> ResolveFusermountAsync(CancellationToken ct) =>
+        ProcessRunner.WhichAsync(_run, FusermountBinaries, ct);
 
     private static string ResolveMountPoint()
     {
@@ -194,26 +183,6 @@ public sealed class ThorFuseMount : IThorMount, IDisposable
 
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         return Path.Combine(home, ".local", "state", "ayn-thor-manager", "mnt");
-    }
-
-    private static async Task<CommandOutput> RealRun(
-        string file,
-        IReadOnlyList<string> args,
-        CancellationToken ct)
-    {
-        try
-        {
-            var result = await Cli.Wrap(file)
-                .WithArguments(args)
-                .WithValidation(CommandResultValidation.None)
-                .ExecuteBufferedAsync(ct);
-
-            return new CommandOutput(result.ExitCode, result.StandardOutput, result.StandardError);
-        }
-        catch (Exception ex)
-        {
-            return new CommandOutput(-1, string.Empty, ex.Message);
-        }
     }
 
     private static readonly TimeSpan MountGrace = TimeSpan.FromMilliseconds(500);
@@ -226,8 +195,3 @@ public sealed class ThorFuseMount : IThorMount, IDisposable
         FuseOperationsHandle Handle,
         TaskCompletionSource<int> Ready);
 }
-
-internal delegate Task<CommandOutput> FusermountRunner(
-    string file,
-    IReadOnlyList<string> args,
-    CancellationToken ct);

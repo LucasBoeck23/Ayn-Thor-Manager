@@ -16,15 +16,8 @@ public sealed class ConnectionSettingsStore : IConnectionSettingsStore
 
     internal ConnectionSettingsStore(string filePath) => _filePath = filePath;
 
-    private static string DefaultFilePath()
-    {
-        var configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
-        if (string.IsNullOrWhiteSpace(configHome))
-            configHome = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");
-
-        return Path.Combine(configHome, "ayn-thor-manager", "settings.json");
-    }
+    private static string DefaultFilePath() =>
+        Path.Combine(UserPaths.ConfigHome(), "ayn-thor-manager", "settings.json");
 
     public async Task<ConnectionSettings> LoadAsync(CancellationToken ct = default)
     {

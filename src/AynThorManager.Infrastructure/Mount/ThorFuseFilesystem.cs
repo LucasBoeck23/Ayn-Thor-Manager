@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Collections.Concurrent;
 using AynThorManager.Core.Interfaces;
 using AynThorManager.Core.Models;
 using AynThorManager.Infrastructure.Files;
@@ -11,6 +12,10 @@ public sealed class ThorFuseFilesystem
     private readonly FileCache _cache;
 
     private readonly string _remoteRoot;
+
+    private static readonly TimeSpan StatCacheTtl = TimeSpan.FromSeconds(5);
+    private readonly ConcurrentDictionary<string, (ThorFileEntry Entry, DateTime At)> _statCache =
+        new(StringComparer.Ordinal);
 
     private static readonly uint CurrentUid = getuid();
     private static readonly uint CurrentGid = getgid();
@@ -57,6 +62,9 @@ public sealed class ThorFuseFilesystem
             mkdir = Mkdir,
             rmdir = Rmdir,
             rename = Rename,
+            chmod = Chmod,
+            chown = Chown,
+            utimens = Utimens,
         };
     }
 
@@ -91,7 +99,15 @@ public sealed class ThorFuseFilesystem
                 }
             }
 
-            var entry = Unwrap(_gateway.StatAsync(ToRemote(path)).GetAwaiter().GetResult());
+            var remote = ToRemote(path);
+            if (TryGetCachedStat(remote, out var cached))
+            {
+                FillStat(ref local, cached);
+                return 0;
+            }
+
+            var entry = Unwrap(_gateway.StatAsync(remote).GetAwaiter().GetResult());
+            _statCache[remote] = (entry, DateTime.UtcNow);
             FillStat(ref local, entry);
             return 0;
         });
@@ -109,11 +125,15 @@ public sealed class ThorFuseFilesystem
             filler(buf, ".", IntPtr.Zero, 0, 0);
             filler(buf, "..", IntPtr.Zero, 0, 0);
 
-            var entries = Unwrap(_gateway.ListAsync(ToRemote(path)).GetAwaiter().GetResult());
+            var dir = ToRemote(path);
+            var entries = Unwrap(_gateway.ListAsync(dir).GetAwaiter().GetResult());
+            var now = DateTime.UtcNow;
             foreach (var entry in entries)
             {
                 if (entry.Name is "." or ".." || string.IsNullOrEmpty(entry.Name))
                     continue;
+
+                _statCache[JoinRemote(dir, entry.Name)] = (entry, now);
 
                 if (filler(buf, entry.Name, IntPtr.Zero, 0, 0) != 0)
                     break;
@@ -179,6 +199,7 @@ public sealed class ThorFuseFilesystem
             }
 
             _cache.MarkDirty(remote);
+            InvalidateStat(remote);
             return count;
         });
     }
@@ -187,7 +208,9 @@ public sealed class ThorFuseFilesystem
     {
         return LibFuseInterop.Guard(() =>
         {
-            Unwrap(_cache.CreateLocal(ToRemote(path)));
+            var remote = ToRemote(path);
+            Unwrap(_cache.CreateLocal(remote));
+            InvalidateStat(remote);
             return 0;
         });
     }
@@ -213,7 +236,9 @@ public sealed class ThorFuseFilesystem
                 stream.SetLength(size);
             }
 
-            _cache.MarkDirty(ToRemote(path));
+            var truncated = ToRemote(path);
+            _cache.MarkDirty(truncated);
+            InvalidateStat(truncated);
             return 0;
         });
     }
@@ -244,11 +269,13 @@ public sealed class ThorFuseFilesystem
             if (_cache.IsCached(remote) && _cache.IsDirty(remote) && !RemoteExists(remote))
             {
                 _cache.Evict(remote);
+                InvalidateStat(remote);
                 return 0;
             }
 
             Unwrap(_gateway.DeleteAsync(remote).GetAwaiter().GetResult());
             _cache.Evict(remote);
+            InvalidateStat(remote);
             return 0;
         });
     }
@@ -257,7 +284,9 @@ public sealed class ThorFuseFilesystem
     {
         return LibFuseInterop.Guard(() =>
         {
-            Unwrap(_gateway.MakeDirAsync(ToRemote(path)).GetAwaiter().GetResult());
+            var remote = ToRemote(path);
+            Unwrap(_gateway.MakeDirAsync(remote).GetAwaiter().GetResult());
+            InvalidateStat(remote);
             return 0;
         });
     }
@@ -269,6 +298,7 @@ public sealed class ThorFuseFilesystem
             var remote = ToRemote(path);
             Unwrap(_gateway.DeleteAsync(remote).GetAwaiter().GetResult());
             _cache.Evict(remote);
+            InvalidateStat(remote);
             return 0;
         });
     }
@@ -278,15 +308,41 @@ public sealed class ThorFuseFilesystem
         return LibFuseInterop.Guard(() =>
         {
             var remoteFrom = ToRemote(from);
+            var remoteTo = ToRemote(to);
             Unwrap(_cache.FlushAsync(remoteFrom).GetAwaiter().GetResult());
-            Unwrap(_gateway.RenameAsync(remoteFrom, ToRemote(to)).GetAwaiter().GetResult());
+            Unwrap(_gateway.RenameAsync(remoteFrom, remoteTo).GetAwaiter().GetResult());
             _cache.Evict(remoteFrom);
+            InvalidateStat(remoteFrom);
+            InvalidateStat(remoteTo);
             return 0;
         });
     }
 
+    private int Chmod(string path, uint mode, IntPtr fi) => 0;
+
+    private int Chown(string path, uint uid, uint gid, IntPtr fi) => 0;
+
+    private int Utimens(string path, IntPtr tv, IntPtr fi) => 0;
+
     private bool RemoteExists(string remotePath) =>
         _gateway.StatAsync(remotePath).GetAwaiter().GetResult().IsSuccess;
+
+    private bool TryGetCachedStat(string remotePath, out ThorFileEntry entry)
+    {
+        if (_statCache.TryGetValue(remotePath, out var hit) && DateTime.UtcNow - hit.At < StatCacheTtl)
+        {
+            entry = hit.Entry;
+            return true;
+        }
+
+        entry = default!;
+        return false;
+    }
+
+    private static string JoinRemote(string dir, string name) =>
+        dir.TrimEnd('/') + "/" + name;
+
+    private void InvalidateStat(string remotePath) => _statCache.TryRemove(remotePath, out _);
 
     private static bool IsRoot(string path) =>
         string.IsNullOrEmpty(path) || path == "/";

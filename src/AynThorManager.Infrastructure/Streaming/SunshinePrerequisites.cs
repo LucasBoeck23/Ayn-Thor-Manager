@@ -1,7 +1,6 @@
-using CliWrap;
-using CliWrap.Buffered;
 using AynThorManager.Core.Interfaces;
 using AynThorManager.Core.Models;
+using AynThorManager.Infrastructure.Processes;
 
 namespace AynThorManager.Infrastructure.Streaming;
 
@@ -11,7 +10,7 @@ public sealed class SunshinePrerequisites : ISunshinePrerequisites
 
     private readonly CommandRunner _run;
 
-    public SunshinePrerequisites() : this(RealRun)
+    public SunshinePrerequisites() : this(ProcessRunner.RunAsync)
     {
     }
 
@@ -77,29 +76,4 @@ public sealed class SunshinePrerequisites : ISunshinePrerequisites
                 "Instale/ative o xdg-desktop-portal para autorizar a captura sem sudo. " +
                 "O app não executa sudo automaticamente.");
     }
-
-    private static async Task<CommandOutput> RealRun(string file, IReadOnlyList<string> args, CancellationToken ct)
-    {
-        try
-        {
-            var result = await Cli.Wrap(file)
-                .WithArguments(args)
-                .WithValidation(CommandResultValidation.None)
-                .ExecuteBufferedAsync(ct);
-
-            return new CommandOutput(result.ExitCode, result.StandardOutput, result.StandardError);
-        }
-        catch (Exception ex)
-        {
-            return new CommandOutput(-1, string.Empty, ex.Message);
-        }
-    }
 }
-
-internal delegate Task<CommandOutput> CommandRunner(
-    string file, IReadOnlyList<string> args, CancellationToken ct);
-
-internal readonly record struct CommandOutput(
-    int ExitCode,
-    string StandardOutput,
-    string StandardError);
